@@ -39,8 +39,10 @@ class Agent(ABC):
         """获取历史记录"""
         return self._history.copy()
     
+    # 字符串表示方法，返回Agent的基本信息
     def __str__(self) -> str:
         return f"Agent(name={self.name}, provider={self.llm.provider})"
     
+    # 正式的字符串表示方法，调用__str__()
     def __repr__(self) -> str:
         return self.__str__()

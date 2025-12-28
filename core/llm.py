@@ -1,14 +1,14 @@
 """HelloAgents统一LLM接口 - 基于OpenAI原生API"""
 
 import os
-from typing import Literal, Optional, Iterator
-from openai import OpenAI
+from typing import Literal, Optional, Iterator, Union
+from openai import OpenAI, AzureOpenAI
 
 from .exceptions import HelloAgentsException
 
 # 支持的LLM提供商
 SUPPORTED_PROVIDERS = Literal[
-    "openai", "deepseek", "qwen", "modelscope",
+    "openai", "azure", "deepseek", "qwen", "modelscope",
     "kimi", "zhipu", "ollama", "vllm", "local", "auto"
 ]
 
@@ -33,6 +33,7 @@ class HelloAgentsLLM:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         timeout: Optional[int] = None,
+        api_version: Optional[str] = None,
         **kwargs
     ):
         """
@@ -47,12 +48,14 @@ class HelloAgentsLLM:
             temperature: 温度参数
             max_tokens: 最大token数
             timeout: 超时时间，从环境变量LLM_TIMEOUT读取，默认60秒
+            api_version: API版本，用于Azure OpenAI
         """
         # 优先使用传入参数，如果未提供，则从环境变量加载
         self.model = model or os.getenv("LLM_MODEL_ID")
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout or int(os.getenv("LLM_TIMEOUT", "60"))
+        self.api_version = api_version
         self.kwargs = kwargs
 
         # 自动检测provider或使用指定的provider
@@ -81,6 +84,8 @@ class HelloAgentsLLM:
         4. 默认返回通用配置
         """
         # 1. 检查特定提供商的环境变量
+        if os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_ENDPOINT"):
+            return "azure"
         if os.getenv("OPENAI_API_KEY"):
             return "openai"
         if os.getenv("DEEPSEEK_API_KEY"):
@@ -121,7 +126,9 @@ class HelloAgentsLLM:
         actual_base_url = base_url or os.getenv("LLM_BASE_URL")
         if actual_base_url:
             base_url_lower = actual_base_url.lower()
-            if "api.openai.com" in base_url_lower:
+            if "openai.azure.com" in base_url_lower or "azure.com" in base_url_lower:
+                return "azure"
+            elif "api.openai.com" in base_url_lower:
                 return "openai"
             elif "api.deepseek.com" in base_url_lower:
                 return "deepseek"
@@ -158,7 +165,17 @@ class HelloAgentsLLM:
 
     def _resolve_credentials(self, api_key: Optional[str], base_url: Optional[str]) -> tuple[str, str]:
         """根据provider解析API密钥和base_url"""
-        if self.provider == "openai":
+        if self.provider == "azure":
+            resolved_api_key = api_key or os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
+            resolved_base_url = base_url or os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("LLM_BASE_URL")
+            # Azure还需要api_version和deployment_name
+            if not self.api_version:
+                self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+            if not self.model:
+                self.model = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME") or os.getenv("LLM_MODEL_ID")
+            return resolved_api_key, resolved_base_url
+        
+        elif self.provider == "openai":
             resolved_api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
             resolved_base_url = base_url or os.getenv("LLM_BASE_URL") or "https://api.openai.com/v1"
             return resolved_api_key, resolved_base_url
@@ -209,17 +226,28 @@ class HelloAgentsLLM:
             resolved_base_url = base_url or os.getenv("LLM_BASE_URL")
             return resolved_api_key, resolved_base_url
 
-    def _create_client(self) -> OpenAI:
-        """创建OpenAI客户端"""
-        return OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url,
-            timeout=self.timeout
-        )
+    def _create_client(self) -> Union[OpenAI, AzureOpenAI]:
+        """创建OpenAI或AzureOpenAI客户端"""
+        if self.provider == "azure":
+            return AzureOpenAI(
+                api_key=self.api_key,
+                azure_endpoint=self.base_url,
+                api_version=self.api_version,
+                timeout=self.timeout
+            )
+        else:
+            return OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url,
+                timeout=self.timeout
+            )
     
     def _get_default_model(self) -> str:
         """获取默认模型"""
-        if self.provider == "openai":
+        if self.provider == "azure":
+            # Azure使用deployment name作为模型名
+            return os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4")
+        elif self.provider == "openai":
             return "gpt-3.5-turbo"
         elif self.provider == "deepseek":
             return "deepseek-chat"
@@ -241,7 +269,9 @@ class HelloAgentsLLM:
             # auto或其他情况：根据base_url智能推断默认模型
             base_url = os.getenv("LLM_BASE_URL", "")
             base_url_lower = base_url.lower()
-            if "modelscope" in base_url_lower:
+            if "azure.com" in base_url_lower:
+                return os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4")
+            elif "modelscope" in base_url_lower:
                 return "Qwen/Qwen2.5-72B-Instruct"
             elif "deepseek" in base_url_lower:
                 return "deepseek-chat"

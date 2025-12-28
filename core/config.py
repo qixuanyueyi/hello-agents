@@ -1,8 +1,8 @@
 """配置管理"""
 
-import os
-from typing import Optional, Dict, Any
-from pydantic import BaseModel
+import os # 导入操作系统模块
+from typing import Optional, Dict, Any # 导入类型提示模块
+from pydantic import BaseModel # 导入Pydantic的BaseModel用于数据验证和设置管理
 
 class Config(BaseModel):
     """HelloAgents配置类"""
@@ -15,7 +15,7 @@ class Config(BaseModel):
     
     # 系统配置
     debug: bool = False
-    log_level: str = "INFO"
+    log_level: str = "INFO" # 可选值: DEBUG, INFO, WARNING, ERROR, CRITICAL。Info为设置默认日志级别。
     
     # 其他配置
     max_history_length: int = 100
