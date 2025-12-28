@@ -1,4 +1,5 @@
-"""工具注册表 - HelloAgents原生工具系统"""
+"""工具注册表 - HelloAgents原生工具系统
+负责工具的注册、管理、调用等功能"""
 
 from typing import Optional, Any, Callable
 from ..core.exceptions import HelloAgentsException

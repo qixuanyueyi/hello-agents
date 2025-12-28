@@ -1,27 +1,30 @@
-"""异步工具执行器 - HelloAgents异步工具执行支持"""
-
+"""异步工具执行器 - HelloAgents异步工具执行支持
+异步执行器，实现工具的异步 / 并行调用
+主线程不用等第一个任务的工具调用完成，直接处理第二个任务，所有工具调用都交给线程池并行执行，最后主线程统一收结果"""
 import asyncio
 import concurrent.futures
 from typing import Dict, Any, List, Callable, Optional
+
 from .registry import ToolRegistry
 
 
 class AsyncToolExecutor:
     """异步工具执行器"""
 
+    # 初始化异步工具执行器，registry为工具注册表，max_workers为最大并发工作线程数
     def __init__(self, registry: ToolRegistry, max_workers: int = 4):
         self.registry = registry
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
     async def execute_tool_async(self, tool_name: str, input_data: str) -> str:
         """异步执行单个工具"""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop() # 获取当前事件循环
         
-        def _execute():
+        def _execute(): # 定义同步执行函数
             return self.registry.execute_tool(tool_name, input_data)
         
         try:
-            result = await loop.run_in_executor(self.executor, _execute)
+            result = await loop.run_in_executor(self.executor, _execute) # 在线程池中执行
             return result
         except Exception as e:
             return f"❌ 工具 '{tool_name}' 异步执行失败: {e}"
@@ -49,7 +52,7 @@ class AsyncToolExecutor:
                 
             print(f"📝 创建任务 {i+1}: {tool_name}")
             async_task = self.execute_tool_async(tool_name, input_data)
-            async_tasks.append((i, task, async_task))
+            async_tasks.append((i, task, async_task)) # 存储任务索引、任务信息和异步任务对象
         
         # 等待所有任务完成
         results = []
@@ -88,9 +91,10 @@ class AsyncToolExecutor:
         Returns:
             执行结果列表
         """
+        # 构建任务列表
         tasks = [
             {"tool_name": tool_name, "input_data": input_data}
-            for input_data in input_list
+            for input_data in input_list # 构建任务
         ]
         return await self.execute_tools_parallel(tasks)
 
@@ -105,6 +109,11 @@ class AsyncToolExecutor:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
 # 便捷函数
 async def run_parallel_tools(registry: ToolRegistry, tasks: List[Dict[str, str]], max_workers: int = 4) -> List[Dict[str, Any]]:
@@ -155,16 +164,17 @@ def run_batch_tool_sync(registry: ToolRegistry, tool_name: str, input_list: List
 async def demo_parallel_execution():
     """演示并行执行的示例"""
     from .registry import ToolRegistry
-    
+    from hello_agents.tools.builtin.calculator import CalculatorTool
     # 创建注册表（这里假设已经注册了工具）
     registry = ToolRegistry()
+    registry.register_tool(CalculatorTool())  # 注册 Tool 实例
     
     # 定义并行任务
     tasks = [
-        {"tool_name": "my_calculator", "input_data": "2 + 2"},
-        {"tool_name": "my_calculator", "input_data": "3 * 4"},
-        {"tool_name": "my_calculator", "input_data": "sqrt(16)"},
-        {"tool_name": "my_calculator", "input_data": "10 / 2"},
+        {"tool_name": "python_calculator", "input_data": "2 + 2"},
+        {"tool_name": "python_calculator", "input_data": "3 * 4"},
+        {"tool_name": "python_calculator", "input_data": "sqrt(16)"},
+        {"tool_name": "python_calculator", "input_data": "10 / 2"},
     ]
     
     # 并行执行

@@ -21,11 +21,11 @@ class SearchTool(Tool):
             name="search",
             description="一个智能网页搜索引擎。支持混合搜索模式，自动选择最佳搜索源。当你需要回答关于时事、事实以及在你的知识库中找不到的信息时，应使用此工具。"
         )
-        self.backend = backend
+        self.backend = backend # "hybrid", "tavily", "serpapi"
         self.tavily_key = tavily_key or os.getenv("TAVILY_API_KEY")
         self.serpapi_key = serpapi_key or os.getenv("SERPAPI_API_KEY")
-        self.available_backends = []
-        self._setup_backends()
+        self.available_backends = [] # 可用的搜索后端
+        self._setup_backends() # 设置搜索后端
 
     def _setup_backends(self):
         """设置搜索后端"""

@@ -74,6 +74,7 @@ class CalculatorTool(Tool):
             print(f"❌ {error_msg}")
             return error_msg
     
+    # 通过递归计算AST节点：递归拆解 AST 节点 → 计算最小单元 → 层层合并结果
     def _eval_node(self, node):
         """递归计算AST节点"""
         if isinstance(node, ast.Constant):  # Python 3.8+
@@ -81,7 +82,7 @@ class CalculatorTool(Tool):
         elif isinstance(node, ast.Num):  # Python < 3.8
             return node.n
         elif isinstance(node, ast.BinOp):
-            return self.OPERATORS[type(node.op)](
+            return self.OPERATORS[type(node.op)]( 
                 self._eval_node(node.left), 
                 self._eval_node(node.right)
             )
