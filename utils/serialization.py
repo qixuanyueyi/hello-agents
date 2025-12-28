@@ -17,9 +17,9 @@ def serialize_object(obj: Any, format: str = "json") -> Union[str, bytes]:
         序列化后的数据
     """
     if format == "json":
-        return json.dumps(obj, ensure_ascii=False, indent=2)
+        return json.dumps(obj, ensure_ascii=False, indent=2)  # 使用JSON格式序列化，确保中文正常显示，格式化输出
     elif format == "pickle":
-        return pickle.dumps(obj)
+        return pickle.dumps(obj) # 使用Pickle格式序列化
     else:
         raise ValueError(f"不支持的序列化格式: {format}")
 

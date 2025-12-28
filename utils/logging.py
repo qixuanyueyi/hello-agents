@@ -24,13 +24,13 @@ def setup_logger(
     logger.setLevel(getattr(logging, level.upper()))
     
     if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
+        handler = logging.StreamHandler(sys.stdout) # 输出到控制台
         formatter = logging.Formatter(
             format_string or 
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        ) # 默认格式
+        handler.setFormatter(formatter) # 设置格式
+        logger.addHandler(handler) # 添加处理器
     
     return logger
 
