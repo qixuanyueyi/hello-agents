@@ -2,7 +2,7 @@
 import os
 from typing import Optional
 from openai import OpenAI
-from .llm import HelloAgentsLLM
+from ..core.llm import HelloAgentsLLM
 
 class MyLLM(HelloAgentsLLM):
     def __init__(

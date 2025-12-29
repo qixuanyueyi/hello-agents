@@ -1,6 +1,6 @@
 # my_main.py
 from dotenv import load_dotenv
-from hello_agents.core.my_llm import MyLLM # 注意：这里导入我们自己的类
+from hello_agents.myLLM.my_llm import MyLLM # 注意：这里导入我们自己的类
 
 # 加载环境变量
 load_dotenv()

@@ -4,7 +4,6 @@ from .agent import Agent
 from .llm import HelloAgentsLLM
 from .message import Message
 from .config import Config
-from .my_llm import MyLLM
 from .exceptions import HelloAgentsException
 
 __all__ = [
@@ -12,6 +11,5 @@ __all__ = [
     "HelloAgentsLLM", 
     "Message",
     "Config",
-    "HelloAgentsException",
-    "MyLLM"
+    "HelloAgentsException"
 ]
