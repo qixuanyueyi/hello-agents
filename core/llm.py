@@ -313,13 +313,13 @@ class HelloAgentsLLM:
             )
 
             # 处理流式响应
-            print("✅ 大语言模型响应成功:")
             for chunk in response:
+                # 检查 choices 是否为空，某些 chunk 可能不包含 choices
+                if not chunk.choices:
+                    continue
                 content = chunk.choices[0].delta.content or ""
                 if content:
-                    print(content, end="", flush=True)
                     yield content
-            print()  # 在流式输出结束后换行
 
         except Exception as e:
             print(f"❌ 调用LLM API时发生错误: {e}")
