@@ -1,7 +1,10 @@
-# 配置好同级文件夹下.env中的大模型API
 from hello_agents import SimpleAgent, HelloAgentsLLM, ToolRegistry
 from hello_agents.tools import MemoryTool, RAGTool
 
+from dotenv import load_dotenv
+
+# 加载项目根目录的 .env 文件
+load_dotenv()  # 默认加载当前目录及父目录的 .env 文件
 # 创建LLM实例
 llm = HelloAgentsLLM()
 
