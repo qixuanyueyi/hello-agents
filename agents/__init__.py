@@ -1,26 +1,17 @@
 """Agent实现模块 - HelloAgents原生Agent范式"""
 
 from .simple_agent import SimpleAgent
+from .function_call_agent import FunctionCallAgent
 from .react_agent import ReActAgent
 from .reflection_agent import ReflectionAgent
 from .plan_solve_agent import PlanAndSolveAgent
+from .tool_aware_agent import ToolAwareSimpleAgent
 
-# 保持向后兼容性
-try:
-    from .tool_agent import ToolAgent
-    from .conversational import ConversationalAgent
-    __all__ = [
-        "SimpleAgent",
-        "ReActAgent",
-        "ReflectionAgent",
-        "PlanAndSolveAgent",
-        "ToolAgent",
-        "ConversationalAgent"
-    ]
-except ImportError: # 如果导入失败，忽略这些模块
-    __all__ = [
-        "SimpleAgent",
-        "ReActAgent",
-        "ReflectionAgent",
-        "PlanAndSolveAgent"
-    ]
+__all__ = [
+    "SimpleAgent",
+    "FunctionCallAgent",
+    "ReActAgent",
+    "ReflectionAgent",
+    "PlanAndSolveAgent",
+    "ToolAwareSimpleAgent"
+]

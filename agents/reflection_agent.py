@@ -57,7 +57,7 @@ class Memory:
 
     def get_trajectory(self) -> str:
         """将所有记忆记录格式化为一个连贯的字符串文本"""
-        trajectory = "" # 轨迹文本
+        trajectory = ""
         for record in self.records:
             if record['type'] == 'execution':
                 trajectory += f"--- 上一轮尝试 (代码) ---\n{record['content']}\n\n"
@@ -94,7 +94,7 @@ class ReflectionAgent(Agent):
         system_prompt: Optional[str] = None,
         config: Optional[Config] = None,
         max_iterations: int = 3,
-        custom_prompts: Optional[Dict[str, str]] = None # 自定义提示词模板
+        custom_prompts: Optional[Dict[str, str]] = None
     ):
         """
         初始化ReflectionAgent

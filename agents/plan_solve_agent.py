@@ -1,7 +1,7 @@
 """Plan and Solve Agent实现 - 分解规划与逐步执行的智能体"""
 
 import ast
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from ..core.agent import Agent
 from ..core.llm import HelloAgentsLLM
 from ..core.config import Config
@@ -69,9 +69,9 @@ class Planner:
 
         try:
             # 提取Python代码块中的列表
-            plan_str = response_text.split("```python")[1].split("```")[0].strip() # 提取代码块内容
-            plan = ast.literal_eval(plan_str) # 安全地解析为Python对象
-            return plan if isinstance(plan, list) else []  # 确保返回的是列表
+            plan_str = response_text.split("```python")[1].split("```")[0].strip()
+            plan = ast.literal_eval(plan_str)
+            return plan if isinstance(plan, list) else []
         except (ValueError, SyntaxError, IndexError) as e:
             print(f"❌ 解析计划时出错: {e}")
             print(f"原始响应: {response_text}")
@@ -113,7 +113,7 @@ class Executor:
             )
             messages = [{"role": "user", "content": prompt}]
 
-            response_text = self.llm_client.invoke(messages, **kwargs) or "" # 获取响应
+            response_text = self.llm_client.invoke(messages, **kwargs) or ""
 
             history += f"步骤 {i}: {step}\n结果: {response_text}\n\n"
             final_answer = response_text
