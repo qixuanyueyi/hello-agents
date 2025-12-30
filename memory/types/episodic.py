@@ -29,9 +29,9 @@ class Episode:
         user_id: str,
         session_id: str,
         timestamp: datetime,
-        content: str,
-        context: Dict[str, Any],
-        outcome: Optional[str] = None,
+        content: str, # 交互内容
+        context: Dict[str, Any], # 上下文信息
+        outcome: Optional[str] = None, # 交互结果
         importance: float = 0.5
     ):
         self.episode_id = episode_id
@@ -62,7 +62,7 @@ class EpisodicMemory(BaseMemory):
         
         # 模式识别缓存
         self.patterns_cache = {}
-        self.last_pattern_analysis = None
+        self.last_pattern_analysis = None # 上次模式分析时间
 
         # 权威文档存储（SQLite）
         db_dir = self.config.storage_path if hasattr(self.config, 'storage_path') else "./memory_data"
@@ -91,7 +91,7 @@ class EpisodicMemory(BaseMemory):
         session_id = memory_item.metadata.get("session_id", "default_session")
         context = memory_item.metadata.get("context", {})
         outcome = memory_item.metadata.get("outcome")
-        participants = memory_item.metadata.get("participants", [])
+        participants = memory_item.metadata.get("participants", []) # 参与者列表
         tags = memory_item.metadata.get("tags", [])
         
         # 创建情景（内存缓存）
@@ -119,7 +119,7 @@ class EpisodicMemory(BaseMemory):
             memory_type="episodic",
             timestamp=ts_int,
             importance=memory_item.importance,
-            properties={
+            properties={                    # 额外属性存储
                 "session_id": session_id,
                 "context": context,
                 "outcome": outcome,
@@ -130,9 +130,11 @@ class EpisodicMemory(BaseMemory):
 
         # 2) 向量索引（Qdrant）
         try:
-            embedding = self.embedder.encode(memory_item.content)
-            if hasattr(embedding, "tolist"):
+            embedding = self.embedder.encode(memory_item.content) # 获取内容嵌入
+            # 确保是列表格式
+            if hasattr(embedding, "tolist"): 
                 embedding = embedding.tolist()
+            # 将向量和元数据存储到向量库
             self.vector_store.add_vectors(
                 vectors=[embedding],
                 metadata=[{
@@ -190,35 +192,35 @@ class EpisodicMemory(BaseMemory):
             hits = []
 
         # 过滤与重排
-        now_ts = int(datetime.now().timestamp())
-        results: List[Tuple[float, MemoryItem]] = []
-        seen = set()
-        for hit in hits:
-            meta = hit.get("metadata", {})
+        now_ts = int(datetime.now().timestamp())    # 当前时间戳
+        results: List[Tuple[float, MemoryItem]] = []# (综合分数, 记忆项)
+        seen = set()                     # 避免重复记忆ID
+        for hit in hits:    # 遍历向量检索结果
+            meta = hit.get("metadata", {}) # 
             mem_id = meta.get("memory_id")
-            if not mem_id or mem_id in seen:
+            if not mem_id or mem_id in seen: # 跳过无效或重复记忆ID
                 continue
             
             # 检查是否已遗忘
-            episode = next((e for e in self.episodes if e.episode_id == mem_id), None)
+            episode = next((e for e in self.episodes if e.episode_id == mem_id), None) # 查找对应情景
             if episode and episode.context.get("forgotten", False):
                 continue  # 跳过已遗忘的记忆
                 
-            if candidate_ids is not None and mem_id not in candidate_ids:
+            if candidate_ids is not None and mem_id not in candidate_ids: # 跳过不在候选集内的记忆
                 continue
-            if session_id and meta.get("session_id") != session_id:
+            if session_id and meta.get("session_id") != session_id: # 会话ID过滤
                 continue
 
             # 从权威库读取完整记录
-            doc = self.doc_store.get_memory(mem_id)
+            doc = self.doc_store.get_memory(mem_id) # 获取记忆文档
             if not doc:
                 continue
 
             # 计算综合分数：向量0.6 + 近因0.2 + 重要性0.2
-            vec_score = float(hit.get("score", 0.0))
-            age_days = max(0.0, (now_ts - int(doc["timestamp"])) / 86400.0)
-            recency_score = 1.0 / (1.0 + age_days)
-            imp = float(doc.get("importance", 0.5))
+            vec_score = float(hit.get("score", 0.0)) # 向量相似度得分
+            age_days = max(0.0, (now_ts - int(doc["timestamp"])) / 86400.0) # 记忆年龄（天）
+            recency_score = 1.0 / (1.0 + age_days)  # 近因得分（简单倒数）
+            imp = float(doc.get("importance", 0.5)) # 重要性得分
             
             # 新评分算法：向量检索纯基于相似度，重要性作为加权因子
             # 基础相似度得分（不受重要性影响）
@@ -244,7 +246,7 @@ class EpisodicMemory(BaseMemory):
                     "recency_score": recency_score
                 }
             )
-            results.append((combined, item))
+            results.append((combined, item)) # 添加到结果列表
             seen.add(mem_id)
 
         # 若向量检索无结果，回退到简单关键词匹配（内存缓存）
@@ -467,6 +469,7 @@ class EpisodicMemory(BaseMemory):
         episode_ids = self.sessions[session_id]
         return [e for e in self.episodes if e.episode_id in episode_ids]
     
+    # 能识别用户行为模式的高级方法
     def find_patterns(self, user_id: str = None, min_frequency: int = 2) -> List[Dict[str, Any]]:
         """发现用户行为模式"""
         # 检查缓存
@@ -527,8 +530,8 @@ class EpisodicMemory(BaseMemory):
     
     def get_timeline(self, user_id: str = None, limit: int = 50) -> List[Dict[str, Any]]:
         """获取时间线视图"""
-        episodes = [e for e in self.episodes if user_id is None or e.user_id == user_id]
-        episodes.sort(key=lambda x: x.timestamp, reverse=True)
+        episodes = [e for e in self.episodes if user_id is None or e.user_id == user_id] # 过滤用户
+        episodes.sort(key=lambda x: x.timestamp, reverse=True) # 按时间排序
         
         timeline = []
         for episode in episodes[:limit]:

@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class QdrantConnectionManager:
     """Qdrant连接管理器 - 防止重复连接和初始化"""
     _instances = {}  # key: (url, collection_name) -> QdrantVectorStore instance
-    _lock = threading.Lock()
+    _lock = threading.Lock() # 线程锁，确保线程安全
     
     @classmethod
     def get_instance(
@@ -122,7 +122,7 @@ class QdrantVectorStore:
             "dot": Distance.DOT,
             "euclidean": Distance.EUCLID,
         }
-        self.distance = distance_map.get(distance.lower(), Distance.COSINE)
+        self.distance = distance_map.get(distance.lower(), Distance.COSINE) # 默认cosine
         
         # 初始化客户端
         self.client = None
@@ -212,7 +212,10 @@ class QdrantVectorStore:
             raise
 
     def _ensure_payload_indexes(self):
-        """为常用过滤字段创建payload索引"""
+        """为常用过滤字段创建payload索引
+        Payload 核心定义：Qdrant 中绑定在向量上的结构化元数据（属性标签），补充向量的非语义信息；
+        Payload 索引的作用：给常用过滤字段（user_id、memory_type 等）创建索引，加速基于这些字段的过滤查询；
+        """
         try:
             index_fields = [
                 ("memory_type", models.PayloadSchemaType.KEYWORD),

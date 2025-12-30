@@ -39,6 +39,7 @@ class Perception:
         self.timestamp = datetime.now()
         self.data_hash = self._calculate_hash()
     
+    # 计算数据哈希，用来唯一标识感知数据
     def _calculate_hash(self) -> str:
         """计算数据哈希"""
         if isinstance(self.data, str):
@@ -66,7 +67,7 @@ class PerceptualMemory(BaseMemory):
         self.perceptual_memories: List[MemoryItem] = []
         
         # 模态索引
-        self.modality_index: Dict[str, List[str]] = {}  # modality -> perception_ids
+        self.modality_index: Dict[str, List[str]] = {}  # modality -> perception_ids；代表存储的感知数据ID列表
         
         # 支持的模态
         self.supported_modalities = set(self.config.perceptual_memory_modalities)
@@ -154,19 +155,19 @@ class PerceptualMemory(BaseMemory):
         if modality not in self.supported_modalities:
             raise ValueError(f"不支持的模态类型: {modality}")
 
-        # 编码感知数据
+        # 编码感知数据，这个用来生成向量
         perception = self._encode_perception(raw_data, modality, memory_item.id)
 
         # 缓存与索引
-        self.perceptions[perception.perception_id] = perception
-        if modality not in self.modality_index:
-            self.modality_index[modality] = []
+        self.perceptions[perception.perception_id] = perception # 缓存感知对象
+        if modality not in self.modality_index: # 建立模态索引
+            self.modality_index[modality] = []  # 初始化列表
         self.modality_index[modality].append(perception.perception_id)
 
         # 存储记忆项（缓存）
         memory_item.metadata["perception_id"] = perception.perception_id
         memory_item.metadata["modality"] = modality
-        # 不把大向量放到metadata中，避免膨胀
+        # 不把大向量放到metadata中，避免膨胀，因此存入缓存列表即可
         self.perceptual_memories.append(memory_item)
 
         # 1) SQLite 权威入库
@@ -232,7 +233,7 @@ class PerceptualMemory(BaseMemory):
 
         # 融合排序
         now_ts = int(datetime.now().timestamp())
-        results: List[Tuple[float, MemoryItem]] = []
+        results: List[Tuple[float, MemoryItem]] = [] # (score, MemoryItem)
         seen = set()
         for hit in hits:
             meta = hit.get("metadata", {})
@@ -241,15 +242,16 @@ class PerceptualMemory(BaseMemory):
                 continue
             if target_modality and meta.get("modality") != target_modality:
                 continue
-            doc = self.doc_store.get_memory(mem_id)
+            doc = self.doc_store.get_memory(mem_id) # 从SQLite获取权威数据
             if not doc:
                 continue
-            vec_score = float(hit.get("score", 0.0))
-            age_days = max(0.0, (now_ts - int(doc["timestamp"])) / 86400.0)
-            recency_score = 1.0 / (1.0 + age_days)
-            imp = float(doc.get("importance", 0.5))
+            vec_score = float(hit.get("score", 0.0)) # 向量相似度得分
+            age_days = max(0.0, (now_ts - int(doc["timestamp"])) / 86400.0) # 记忆年龄（天）
+            recency_score = 1.0 / (1.0 + age_days)  # 简单的时间衰减得分
+            imp = float(doc.get("importance", 0.5)) # 重要性得分，默认0.5
             
             # 新评分算法：向量检索纯基于相似度，重要性作为加权因子
+
             # 基础相似度得分（不受重要性影响）
             base_relevance = vec_score * 0.8 + recency_score * 0.2
             
@@ -463,6 +465,7 @@ class PerceptualMemory(BaseMemory):
             "document_store": {k: v for k, v in db_stats.items() if k.endswith("_count") or k in ["store_type", "db_path"]}
         }
     
+    # 跨模态搜索
     def cross_modal_search(
         self,
         query: Any,
@@ -548,12 +551,12 @@ class PerceptualMemory(BaseMemory):
         target_dim = self._get_dim_for_modality(modality)
         encoder = self.encoders.get(modality, self._default_encoder)
         vec = encoder(data)
-        if not isinstance(vec, list):
+        if not isinstance(vec, list): # 确保向量是列表
             vec = list(vec)
         if len(vec) < target_dim:
-            vec = vec + [0.0] * (target_dim - len(vec))
+            vec = vec + [0.0] * (target_dim - len(vec)) # 补零
         elif len(vec) > target_dim:
-            vec = vec[:target_dim]
+            vec = vec[:target_dim] # 截断
         return vec
     
     def _text_encoder(self, text: str) -> List[float]:
@@ -696,6 +699,7 @@ class PerceptualMemory(BaseMemory):
             except Exception:
                 pass
 
+    # 获取对应模态的向量存储
     def _get_vector_store_for_modality(self, modality: Optional[str]) -> QdrantVectorStore:
         mod = (modality or "text").lower()
         return self.vector_stores.get(mod, self.vector_stores["text"])

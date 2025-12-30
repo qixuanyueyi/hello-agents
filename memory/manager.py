@@ -127,11 +127,12 @@ class MemoryManager:
         
         # 从各个记忆类型中检索
         all_results = []
-        per_type_limit = max(1, limit // len(memory_types))
+        per_type_limit = max(1, limit // len(memory_types)) 
 
+        # 遍历指定的记忆类型进行检索
         for memory_type in memory_types:
             if memory_type in self.memory_types:
-                memory_instance = self.memory_types[memory_type]
+                memory_instance = self.memory_types[memory_type] # 获取记忆类型实例
                 try:
                     # 使用各个记忆类型自己的检索方法
                     type_results = memory_instance.retrieve(
@@ -140,7 +141,7 @@ class MemoryManager:
                         min_importance=min_importance,
                         user_id=self.user_id
                     )
-                    all_results.extend(type_results)
+                    all_results.extend(type_results) # 收集结果
                 except Exception as e:
                     logger.warning(f"检索 {memory_type} 记忆时出错: {e}")
                     continue

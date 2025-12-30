@@ -48,7 +48,7 @@ class WorkingMemory(BaseMemory):
         priority = self._calculate_priority(memory_item)
         
         # 添加到堆中
-        heapq.heappush(self.memory_heap, (-priority, memory_item.timestamp, memory_item))
+        heapq.heappush(self.memory_heap, (-priority, memory_item.timestamp, memory_item))# 将优先级取反以实现最大堆
         self.memories.append(memory_item)
         
         # 更新token计数
@@ -89,13 +89,13 @@ class WorkingMemory(BaseMemory):
             documents = [query] + [m.content for m in filtered_memories]
             
             # TF-IDF向量化
-            vectorizer = TfidfVectorizer(stop_words=None, lowercase=True)
-            tfidf_matrix = vectorizer.fit_transform(documents)
+            vectorizer = TfidfVectorizer(stop_words=None, lowercase=True) # 关闭停用词过滤以保留所有词汇
+            tfidf_matrix = vectorizer.fit_transform(documents) # 包括查询和记忆内容
             
             # 计算相似度
-            query_vector = tfidf_matrix[0:1]
-            doc_vectors = tfidf_matrix[1:]
-            similarities = cosine_similarity(query_vector, doc_vectors).flatten()
+            query_vector = tfidf_matrix[0:1] # 查询向量
+            doc_vectors = tfidf_matrix[1:] # 记忆向量
+            similarities = cosine_similarity(query_vector, doc_vectors).flatten() # 扁平化为一维数组
             
             # 存储向量分数
             for i, memory in enumerate(filtered_memories):
@@ -106,11 +106,11 @@ class WorkingMemory(BaseMemory):
             vector_scores = {}
 
         # 计算最终分数
-        query_lower = query.lower()
-        scored_memories = []
+        query_lower = query.lower() # 统一小写以便匹配
+        scored_memories = [] # (final_score, memory_item)
         
         for memory in filtered_memories:
-            content_lower = memory.content.lower()
+            content_lower = memory.content.lower() # 统一小写以便匹配
             
             # 获取向量分数（如果有）
             vector_score = vector_scores.get(memory.id, 0.0)
@@ -337,8 +337,8 @@ class WorkingMemory(BaseMemory):
     
     def _calculate_time_decay(self, timestamp: datetime) -> float:
         """计算时间衰减因子"""
-        time_diff = datetime.now() - timestamp
-        hours_passed = time_diff.total_seconds() / 3600
+        time_diff = datetime.now() - timestamp # 计算时间差
+        hours_passed = time_diff.total_seconds() / 3600 # 计算经过的小时数
         
         # 指数衰减（工作记忆衰减更快）
         decay_factor = self.config.decay_factor ** (hours_passed / 6)  # 每6小时衰减

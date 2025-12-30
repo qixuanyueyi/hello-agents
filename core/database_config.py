@@ -39,7 +39,7 @@ class QdrantConfig(BaseModel):
     )
     distance: str = Field(
         default="cosine",
-        description="距离度量方式 (cosine, dot, euclidean)"
+        description="距离度量方式 (cosine, dot, euclidean)" # cosine为余弦距离, dot为点积距离, euclidean为欧氏距离
     )
     
     # 连接配置

@@ -31,7 +31,7 @@ class Entity:
         name: str,
         entity_type: str = "MISC",
         description: str = "",
-        properties: Dict[str, Any] = None
+        properties: Dict[str, Any] = None # 附加属性
     ):
         self.entity_id = entity_id
         self.name = name
@@ -42,6 +42,7 @@ class Entity:
         self.updated_at = datetime.now()
         self.frequency = 1  # 出现频率
     
+    # 转换为字典
     def to_dict(self) -> Dict[str, Any]:
         return {
             "entity_id": self.entity_id,
@@ -60,7 +61,7 @@ class Relation:
         from_entity: str,
         to_entity: str,
         relation_type: str,
-        strength: float = 1.0,
+        strength: float = 1.0, # 关系强度
         evidence: str = "",
         properties: Dict[str, Any] = None
     ):
@@ -116,8 +117,8 @@ class SemanticMemory(BaseMemory):
         self._init_nlp()
         
         # 记忆存储
-        self.semantic_memories: List[MemoryItem] = []
-        self.memory_embeddings: Dict[str, np.ndarray] = {}
+        self.semantic_memories: List[MemoryItem] = [] # 内存缓存
+        self.memory_embeddings: Dict[str, np.ndarray] = {} # 记忆嵌入缓存
         
         logger.info("增强语义记忆初始化完成（使用Qdrant+Neo4j专业数据库）")
     
@@ -127,7 +128,7 @@ class SemanticMemory(BaseMemory):
             self.embedding_model = get_text_embedder()
             # 轻量健康检查与日志
             try:
-                test_vec = self.embedding_model.encode("health_check")
+                test_vec = self.embedding_model.encode("health_check") # 测试嵌入
                 dim = getattr(self.embedding_model, "dimension", len(test_vec))
                 logger.info(f"✅ 嵌入模型就绪，维度: {dim}")
             except Exception:
@@ -188,9 +189,9 @@ class SemanticMemory(BaseMemory):
             loaded_models = []
             for model_name, lang_name in models_to_try:
                 try:
-                    nlp = spacy.load(model_name)
+                    nlp = spacy.load(model_name) # 加载模型
                     self.nlp_models[model_name] = nlp
-                    loaded_models.append(lang_name)
+                    loaded_models.append(lang_name) # 记录已加载模型
                     logger.info(f"✅ 加载{lang_name}spaCy模型: {model_name}")
                 except OSError:
                     logger.warning(f"⚠️ {lang_name}spaCy模型不可用: {model_name}")
@@ -260,7 +261,7 @@ class SemanticMemory(BaseMemory):
                 f"{r.from_entity}-{r.relation_type}-{r.to_entity}" for r in relations
             ]
             
-            # 6. 存储记忆
+            # 6. 存储记忆到内存缓存
             self.semantic_memories.append(memory_item)
             
             logger.info(f"✅ 添加语义记忆: {len(entities)}个实体, {len(relations)}个关系")
@@ -514,14 +515,14 @@ class SemanticMemory(BaseMemory):
             content = result.get("content", "")
             content_hash = hash(content.strip())
             
-            if memory_id in combined:
-                combined[memory_id]["graph_score"] = result.get("similarity", 0.0)
+            if memory_id in combined: # 已存在，更新图分数
+                combined[memory_id]["graph_score"] = result.get("similarity", 0.0) # 更新图分数为真值
             elif content_hash not in content_seen:
                 content_seen.add(content_hash)
                 combined[memory_id] = {
                     **result,
-                    "vector_score": 0.0,
-                    "graph_score": result.get("similarity", 0.0),
+                    "vector_score": 0.0, 
+                    "graph_score": result.get("similarity", 0.0), # similarity为真值
                     "content_hash": content_hash
                 }
         
@@ -529,7 +530,7 @@ class SemanticMemory(BaseMemory):
         for memory_id, result in combined.items():
             vector_score = result["vector_score"]
             graph_score = result["graph_score"]
-            importance = result.get("importance", 0.5)
+            importance = result.get("importance", 0.5) # 默认重要性
             
             # 新评分算法：向量检索纯基于相似度，重要性作为加权因子
             # 基础相似度得分（不受重要性影响）
@@ -553,6 +554,7 @@ class SemanticMemory(BaseMemory):
         
         # 应用最小相关性阈值
         min_threshold = 0.1  # 最小相关性阈值
+        # 过滤掉相关性低于阈值的结果
         filtered_results = [
             result for result in combined.values() 
             if result["combined_score"] >= min_threshold
@@ -625,7 +627,7 @@ class SemanticMemory(BaseMemory):
                     entity = Entity(
                         entity_id=f"entity_{hash(ent.text)}",
                         name=ent.text,
-                        entity_type=ent.label_,
+                        entity_type=ent.label_, 
                         description=f"从文本中识别的{ent.label_}实体"
                     )
                     entities.append(entity)

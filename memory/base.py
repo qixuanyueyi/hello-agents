@@ -33,7 +33,7 @@ class MemoryConfig(BaseModel):
     # 统计显示用的基础配置（仅用于展示）
     max_capacity: int = 100
     importance_threshold: float = 0.1
-    decay_factor: float = 0.95
+    decay_factor: float = 0.95 # 记忆衰减因子
 
     # 工作记忆特定配置
     working_memory_capacity: int = 10

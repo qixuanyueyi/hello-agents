@@ -25,7 +25,7 @@ class MemoryTool(Tool):
         user_id: str = "default_user",
         memory_config: MemoryConfig = None,
         memory_types: List[str] = None,
-        expandable: bool = False
+        expandable: bool = False # 是否作为可展开工具使用
     ):
         super().__init__(
             name="memory",
@@ -138,6 +138,9 @@ class MemoryTool(Tool):
             ToolParameter(name="importance_threshold", type="number", description="整合重要性阈值（默认0.7）", required=False, default=0.7),
         ]
 
+    """用 _is_tool_action 筛选出工具方法；
+        用 _tool_name 作为方法的 “调用别名”；
+        用 _tool_description 生成工具说明文档。"""
     @tool_action("memory_add", "添加新记忆到记忆系统中")
     def _add_memory(
         self,
@@ -162,14 +165,14 @@ class MemoryTool(Tool):
         metadata = {}
         try:
             # 确保会话ID存在
-            if self.current_session_id is None:
-                self.current_session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            if self.current_session_id is None: # 如果没有会话ID，则创建一个新的
+                self.current_session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}" 
 
             # 感知记忆文件支持：注入 raw_data 与模态
             if memory_type == "perceptual" and file_path:
-                inferred = modality or self._infer_modality(file_path)
-                metadata.setdefault("modality", inferred)
-                metadata.setdefault("raw_data", file_path)
+                inferred = modality or self._infer_modality(file_path) # 根据扩展名推断模态
+                metadata.setdefault("modality", inferred) # 设置模态
+                metadata.setdefault("raw_data", file_path) # 存储文件路径作为原始数据引用
 
             # 添加会话信息到元数据
             metadata.update({
@@ -239,7 +242,9 @@ class MemoryTool(Tool):
             formatted_results = []
             formatted_results.append(f"🔍 找到 {len(results)} 条相关记忆:")
 
-            for i, memory in enumerate(results, 1):
+            # 遍历查询结果（results），i 从 1 开始计数（enumerate的第二个参数是起始值）
+            for i, memory in enumerate(results, 1): 
+                # 1. 定义记忆类型的中文映射字典（把英文类型转成中文）
                 memory_type_label = {
                     "working": "工作记忆",
                     "episodic": "情景记忆",
@@ -247,6 +252,7 @@ class MemoryTool(Tool):
                     "perceptual": "感知记忆"
                 }.get(memory.memory_type, memory.memory_type)
 
+                # 2. 截取记忆内容的前80个字符作为预览
                 content_preview = memory.content[:80] + "..." if len(memory.content) > 80 else memory.content
                 formatted_results.append(
                     f"{i}. [{memory_type_label}] {content_preview} (重要性: {memory.importance:.2f})"
