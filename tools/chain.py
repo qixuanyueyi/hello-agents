@@ -1,5 +1,4 @@
-"""工具链管理器 - HelloAgents工具链式调用支持
-工具链管理，负责把多个工具按流程串联 / 组合执行"""
+"""工具链管理器 - HelloAgents工具链式调用支持"""
 
 from typing import List, Dict, Any, Optional
 from .registry import ToolRegistry
@@ -25,7 +24,7 @@ class ToolChain:
         step = {
             "tool_name": tool_name,
             "input_template": input_template,
-            "output_key": output_key or f"step_{len(self.steps)}_result" 
+            "output_key": output_key or f"step_{len(self.steps)}_result"
         }
         self.steps.append(step)
         print(f"✅ 工具链 '{self.name}' 添加步骤: {tool_name}")
@@ -63,14 +62,14 @@ class ToolChain:
             
             # 替换模板中的变量
             try:
-                actual_input = input_template.format(**context) # 使用上下文进行变量替换
+                actual_input = input_template.format(**context)
             except KeyError as e:
                 return f"❌ 模板变量替换失败: {e}"
             
             # 执行工具
             try:
                 result = registry.execute_tool(tool_name, actual_input)
-                context[output_key] = result # 存储结果到上下文
+                context[output_key] = result
                 final_result = result
                 print(f"✅ 步骤 {i+1} 完成")
             except Exception as e:
