@@ -7,7 +7,7 @@ import json
 from ..embedding import get_text_embedder, get_dimension
 from ..storage.qdrant_store import QdrantVectorStore
 
-
+# 辅助函数：获取MarkItDown实例
 def _get_markitdown_instance():
     """
     Get a configured MarkItDown instance for document conversion.
@@ -19,7 +19,7 @@ def _get_markitdown_instance():
         print("[WARNING] MarkItDown not available. Install with: pip install markitdown")
         return None
 
-
+# 辅助函数：检查文件格式是否受MarkItDown支持
 def _is_markitdown_supported_format(path: str) -> bool:
     """
     Check if the file format is supported by MarkItDown.
@@ -45,7 +45,7 @@ def _is_markitdown_supported_format(path: str) -> bool:
     }
     return ext in supported_formats
 
-
+# 主要函数：将任意支持格式转换为markdown文本
 def _convert_to_markdown(path: str) -> str:
     """
     Universal document reader using MarkItDown with enhanced PDF processing.
@@ -73,7 +73,7 @@ def _convert_to_markdown(path: str) -> str:
     except Exception as e:
         print(f"[WARNING] MarkItDown failed for {path}: {e}")
         return _fallback_text_reader(path)
-
+# 增强的PDF处理函数，使用MarkItDown并进行后处理
 def _enhanced_pdf_processing(path: str) -> str:
     """
     Enhanced PDF processing with post-processing cleanup.
@@ -100,6 +100,7 @@ def _enhanced_pdf_processing(path: str) -> str:
         print(f"[WARNING] Enhanced PDF processing failed for {path}: {e}")
         return _fallback_text_reader(path)
 
+# PDF文本后处理函数
 def _post_process_pdf_text(text: str) -> str:
     """
     Post-process PDF text to improve quality.
@@ -149,7 +150,7 @@ def _post_process_pdf_text(text: str) -> str:
                 merged_lines.append(merged_line)
                 i += 2  # 跳过下一行
                 continue
-        
+        # 否则直接添加当前行
         merged_lines.append(current_line)
         i += 1
     
@@ -172,7 +173,7 @@ def _post_process_pdf_text(text: str) -> str:
             
             paragraphs.append(line)
         else:
-            current_paragraph.append(line)
+            current_paragraph.append(line) # 继续当前段落
     
     # 添加最后一个段落
     if current_paragraph:
@@ -180,7 +181,7 @@ def _post_process_pdf_text(text: str) -> str:
     
     return '\n\n'.join(paragraphs)
 
-
+# 辅助函数：简单的回退文本读取器, 用来处理基本文本文件
 def _fallback_text_reader(path: str) -> str:
     """
     Simple fallback reader for basic text files when MarkItDown is unavailable.
@@ -195,7 +196,7 @@ def _fallback_text_reader(path: str) -> str:
         except Exception:
             return ""
 
-
+# 辅助函数：检测文本语言
 def _detect_lang(sample: str) -> str:
     try:
         from langdetect import detect
@@ -203,7 +204,7 @@ def _detect_lang(sample: str) -> str:
     except Exception:
         return "unknown"
 
-
+# 辅助函数：检查字符是否为CJK字符
 def _is_cjk(ch: str) -> bool:
     code = ord(ch)
     return (
@@ -216,14 +217,14 @@ def _is_cjk(ch: str) -> bool:
         0xF900 <= code <= 0xFAFF
     )
 
-
+# 辅助函数：近似计算文本的token长度
 def _approx_token_len(text: str) -> int:
     # 近似估计：CJK字符按1 token，其他按空白分词
     cjk = sum(1 for ch in text if _is_cjk(ch))
     non_cjk_tokens = len([t for t in text.split() if t])
     return cjk + non_cjk_tokens
 
-
+# 辅助函数：按标题分割文本为段落
 def _split_paragraphs_with_headings(text: str) -> List[Dict]:
     lines = text.splitlines()
     heading_stack: List[str] = []
@@ -268,7 +269,7 @@ def _split_paragraphs_with_headings(text: str) -> List[Dict]:
         paragraphs = [{"content": text, "heading_path": None, "start": 0, "end": len(text)}]
     return paragraphs
 
-
+# 辅助函数：按token数分块段落
 def _chunk_paragraphs(paragraphs: List[Dict], chunk_tokens: int, overlap_tokens: int) -> List[Dict]:
     chunks: List[Dict] = []
     cur: List[Dict] = []
@@ -321,7 +322,7 @@ def _chunk_paragraphs(paragraphs: List[Dict], chunk_tokens: int, overlap_tokens:
         })
     return chunks
 
-
+# 主要函数：加载和分块文本
 def load_and_chunk_texts(paths: List[str], chunk_size: int = 800, chunk_overlap: int = 100, namespace: Optional[str] = None, source_label: str = "rag") -> List[Dict]:
     """
     Universal document loader and chunker using MarkItDown.
@@ -388,7 +389,7 @@ def load_and_chunk_texts(paths: List[str], chunk_size: int = 800, chunk_overlap:
     print(f"[RAG] Universal loader done: total_chunks={len(chunks)}")
     return chunks
 
-
+# 辅助函数：构建图数据库实体和关系
 def build_graph_from_chunks(neo4j, chunks: List[Dict]) -> None:
     created_docs = set()
     for ch in chunks:
@@ -422,7 +423,7 @@ def build_graph_from_chunks(neo4j, chunks: List[Dict]) -> None:
             except Exception:
                 pass
 
-
+# 辅助函数：预处理markdown文本以提升嵌入质量
 def _preprocess_markdown_for_embedding(text: str) -> str:
     """
     Preprocess markdown text for better embedding quality.
@@ -450,7 +451,7 @@ def _preprocess_markdown_for_embedding(text: str) -> str:
     
     return text.strip()
 
-
+# 辅助函数：创建默认的Qdrant向量存储
 def _create_default_vector_store(dimension: int = None) -> QdrantVectorStore:
     """
     Create default Qdrant vector store with RAG-optimized settings.
@@ -476,12 +477,12 @@ def _create_default_vector_store(dimension: int = None) -> QdrantVectorStore:
 
 # Cache functions removed - using unified embedder with internal caching
 
-
+# 主要函数：索引文档块到向量存储
 def index_chunks(
     store = None, 
     chunks: List[Dict] = None, 
     cache_db: Optional[str] = None, 
-    batch_size: int = 64,
+    batch_size: int = 8,  # 降低为8以满足API限制（不超过10）
     rag_namespace: str = "default"
 ) -> None:
     """
@@ -574,9 +575,36 @@ def index_chunks(
                     time.sleep(2)  # 等待2秒避免频率限制
                     
                     small_vecs = embedder.encode(small_part)
-                    # Normalize to List[List[float]]
-                    if isinstance(small_vecs, list) and small_vecs and not isinstance(small_vecs[0], list):
-                        small_vecs = [small_vecs]
+                    
+                    # 更健壮的向量规范化逻辑
+                    if not isinstance(small_vecs, list):
+                        # 如果是numpy数组或其他类型，转为列表
+                        if hasattr(small_vecs, "tolist"):
+                            small_vecs = small_vecs.tolist()
+                        elif hasattr(small_vecs, "__iter__"):
+                            small_vecs = list(small_vecs)
+                    
+                    # 确保是二维列表 [[...], [...], ...]
+                    if small_vecs and len(small_vecs) > 0:
+                        # 检查第一个元素
+                        first_elem = small_vecs[0]
+                        if not isinstance(first_elem, (list, tuple)):
+                            # 如果不是列表/元组，可能是一维数组，需要包装
+                            if hasattr(first_elem, "__len__") and not isinstance(first_elem, (int, float, str)):
+                                # first_elem 是数组类型，转换每个元素
+                                normalized = []
+                                for v in small_vecs:
+                                    if hasattr(v, "tolist"):
+                                        normalized.append(v.tolist())
+                                    else:
+                                        normalized.append(list(v))
+                                small_vecs = normalized
+                            else:
+                                # small_vecs 本身就是一个向量，包装成列表
+                                if hasattr(small_vecs, "tolist"):
+                                    small_vecs = [small_vecs.tolist()]
+                                else:
+                                    small_vecs = [list(small_vecs)]
                     
                     for v in small_vecs:
                         if hasattr(v, "tolist"):
@@ -631,7 +659,7 @@ def index_chunks(
         print(f"[RAG] Qdrant upsert failed")
         raise RuntimeError("Failed to index vectors to Qdrant")
 
-
+# 主要函数：嵌入查询文本
 def embed_query(query: str) -> List[float]:
     """
     Embed query using unified embedding (百炼 with fallback).
@@ -667,7 +695,7 @@ def embed_query(query: str) -> List[float]:
         # Return zero vector as fallback
         return [0.0] * dimension
 
-
+# 主要函数：搜索RAG向量
 def search_vectors(
     store = None, 
     query: str = "", 
@@ -708,7 +736,7 @@ def search_vectors(
         print(f"[WARNING] RAG search failed: {e}")
         return []
 
-
+# 辅助函数：多查询扩展（MQE）
 def _prompt_mqe(query: str, n: int) -> List[str]:
     try:
         from ...core.llm import HelloAgentsLLM
@@ -724,7 +752,7 @@ def _prompt_mqe(query: str, n: int) -> List[str]:
     except Exception:
         return [query]
 
-
+# 辅助函数：HyDE查询扩展
 def _prompt_hyde(query: str) -> Optional[str]:
     try:
         from ...core.llm import HelloAgentsLLM
@@ -737,7 +765,7 @@ def _prompt_hyde(query: str) -> Optional[str]:
     except Exception:
         return None
 
-
+# 主要函数：扩展查询并搜索RAG向量
 def search_vectors_expanded(
     store = None,
     query: str = "",
@@ -804,7 +832,7 @@ def search_vectors_expanded(
     merged.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
     return merged[:top_k]
 
-
+# 辅助函数：尝试加载CrossEncoder模型
 def _try_load_cross_encoder(model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
     try:
         from sentence_transformers import CrossEncoder
@@ -812,7 +840,7 @@ def _try_load_cross_encoder(model_name: str = "cross-encoder/ms-marco-MiniLM-L-6
     except Exception:
         return None
 
-
+# 主要函数：使用CrossEncoder重新排序结果
 def rerank_with_cross_encoder(query: str, items: List[Dict], model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2", top_k: int = 10) -> List[Dict]:
     ce = _try_load_cross_encoder(model_name)
     if ce is None or not items:
@@ -827,7 +855,7 @@ def rerank_with_cross_encoder(query: str, items: List[Dict], model_name: str = "
     except Exception:
         return items[:top_k]
 
-
+# 主要函数：计算图信号
 def compute_graph_signals_from_pool(vector_hits: List[Dict], same_doc_weight: float = 1.0, proximity_weight: float = 1.0, proximity_window_chars: int = 1600) -> Dict[str, float]:
     """
     Compute graph signals with direct parameters instead of environment variables.
@@ -890,7 +918,7 @@ def compute_graph_signals_from_pool(vector_hits: List[Dict], same_doc_weight: fl
                 graph_signal[k] = graph_signal[k] / max_v
     return graph_signal
 
-
+# 主要函数：排名结果
 def rank(vector_hits: List[Dict], graph_signals: Optional[Dict[str, float]] = None, w_vector: float = 0.7, w_graph: float = 0.3) -> List[Dict]:
     """
     Rank results with direct weight parameters instead of environment variables.
@@ -913,7 +941,7 @@ def rank(vector_hits: List[Dict], graph_signals: Optional[Dict[str, float]] = No
     items.sort(key=lambda x: x["score"], reverse=True)
     return items
 
-
+# 主要函数：合并片段为单一文本
 def merge_snippets(ranked_items: List[Dict], max_chars: int = 1200) -> str:
     out: List[str] = []
     total = 0
@@ -932,7 +960,7 @@ def merge_snippets(ranked_items: List[Dict], max_chars: int = 1200) -> str:
         total += len(text)
     return "\n\n".join(out)
 
-
+# 主要函数：从池中扩展邻近片段
 def expand_neighbors_from_pool(selected: List[Dict], pool: List[Dict], neighbors: int = 1, max_additions: int = 5) -> List[Dict]:
     if not selected or not pool or neighbors <= 0:
         return selected
@@ -978,7 +1006,7 @@ def expand_neighbors_from_pool(selected: List[Dict], pool: List[Dict], neighbors
     extended.sort(key=lambda x: (x.get("rerank_score", x.get("score", 0.0))), reverse=True)
     return extended
 
-
+# 主要函数：按文档分组合并片段并添加引用
 def merge_snippets_grouped(ranked_items: List[Dict], max_chars: int = 1200, include_citations: bool = True) -> str:
     # Group by doc_id and aggregate doc score
     by_doc: Dict[str, List[Dict]] = {}
@@ -1056,7 +1084,7 @@ def merge_snippets_grouped(ranked_items: List[Dict], max_chars: int = 1200, incl
         return "\n".join(lines)
     return merged
 
-
+# 主要函数：压缩排名项
 def compress_ranked_items(ranked_items: List[Dict], enable_compression: bool = True, max_per_doc: int = 2, join_gap: int = 200) -> List[Dict]:
     """
     Compress ranked items with direct parameters instead of environment variables.
@@ -1106,7 +1134,7 @@ def compress_ranked_items(ranked_items: List[Dict], enable_compression: bool = T
             by_doc_count[did] = cnt + 1
     return new_items
 
-
+# 主要函数：TL;DR总结文本
 def tldr_summarize(text: str, bullets: int = 3) -> Optional[str]:
     try:
         if not text or len(text.strip()) == 0:
@@ -1127,6 +1155,7 @@ def tldr_summarize(text: str, bullets: int = 3) -> Optional[str]:
 # High-level RAG Pipeline API
 # ==================
 
+# 创建完整的RAG流水线
 def create_rag_pipeline(
     qdrant_url: Optional[str] = None,
     qdrant_api_key: Optional[str] = None,
@@ -1140,7 +1169,7 @@ def create_rag_pipeline(
         Dict containing store, namespace, and helper functions
     """
     dimension = get_dimension(384)
-    
+    # 1. 创建Qdrant向量存储
     store = QdrantVectorStore(
         url=qdrant_url,
         api_key=qdrant_api_key,
@@ -1148,23 +1177,24 @@ def create_rag_pipeline(
         vector_size=dimension,
         distance="cosine"
     )
-    
+    # 2. 定义添加文档函数
     def add_documents(file_paths: List[str], chunk_size: int = 800, chunk_overlap: int = 100):
         """Add documents to RAG pipeline"""
-        chunks = load_and_chunk_texts(
+        chunks = load_and_chunk_texts( # 2.1 加载和分块文本
             paths=file_paths,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             namespace=rag_namespace,
             source_label="rag"
         )
-        index_chunks(
+        index_chunks( # 2.2 索引分块
             store=store,
             chunks=chunks,
             rag_namespace=rag_namespace
         )
         return len(chunks)
     
+    # 3. 定义搜索函数
     def search(query: str, top_k: int = 8, score_threshold: Optional[float] = None):
         """Search RAG knowledge base"""
         return search_vectors(
@@ -1174,12 +1204,12 @@ def create_rag_pipeline(
             rag_namespace=rag_namespace,
             score_threshold=score_threshold
         )
-    
+    # 4. 定义高级搜索函数
     def search_advanced(
         query: str, 
         top_k: int = 8, 
-        enable_mqe: bool = False,
-        enable_hyde: bool = False,
+        enable_mqe: bool = False, # 启用多查询扩展
+        enable_hyde: bool = False,# 启用HYDE查询扩展
         score_threshold: Optional[float] = None
     ):
         """Advanced search with query expansion"""
@@ -1192,7 +1222,7 @@ def create_rag_pipeline(
             enable_hyde=enable_hyde,
             score_threshold=score_threshold
         )
-    
+    # 5. 定义获取统计信息函数
     def get_stats():
         """Get pipeline statistics"""
         return store.get_collection_stats()

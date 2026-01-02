@@ -1,11 +1,11 @@
 """文档处理模块"""
 
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass # 用于简化类的定义
 from datetime import datetime
 import hashlib
 
-@dataclass
+@dataclass 
 class Document:
     """文档类"""
     content: str
@@ -15,7 +15,7 @@ class Document:
     def __post_init__(self):
         if self.doc_id is None:
             # 基于内容生成ID
-            self.doc_id = hashlib.md5(self.content.encode()).hexdigest()
+            self.doc_id = hashlib.md5(self.content.encode()).hexdigest() 
 
 @dataclass 
 class DocumentChunk:
@@ -29,8 +29,8 @@ class DocumentChunk:
     def __post_init__(self):
         if self.chunk_id is None:
             # 基于文档ID和块索引生成ID
-            chunk_content = f"{self.doc_id}_{self.chunk_index}_{self.content[:50]}"
-            self.chunk_id = hashlib.md5(chunk_content.encode()).hexdigest()
+            chunk_content = f"{self.doc_id}_{self.chunk_index}_{self.content[:50]}" # 根据前50字符生成ID
+            self.chunk_id = hashlib.md5(chunk_content.encode()).hexdigest() # 生成chunk_id
 
 class DocumentProcessor:
     """文档处理器"""
@@ -39,7 +39,7 @@ class DocumentProcessor:
         self,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
-        separators: Optional[List[str]] = None
+        separators: Optional[List[str]] = None # 自定义分隔符列表
     ):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -151,7 +151,7 @@ class DocumentProcessor:
             # 在end附近寻找分隔符
             search_start = max(start, end - 100)  # 在最后100个字符中寻找
             
-            for i in range(end - len(separator), search_start - 1, -1):
+            for i in range(end - len(separator), search_start - 1, -1): # 向前搜索
                 if text[i:i + len(separator)] == separator:
                     return i + len(separator)
         
@@ -179,9 +179,10 @@ class DocumentProcessor:
             combined_length = len(current_chunk.content) + len(next_chunk.content)
             
             if (combined_length <= max_length and 
-                current_chunk.doc_id == next_chunk.doc_id):
+                current_chunk.doc_id == next_chunk.doc_id): # 同一文档
                 # 合并块
-                current_chunk.content += "\n" + next_chunk.content
+                current_chunk.content += "\n" + next_chunk.content # 使用换行符连接
+                # 更新元数据
                 current_chunk.metadata["total_chunks"] = current_chunk.metadata.get("total_chunks", 1) + 1
             else:
                 # 不能合并，保存当前块

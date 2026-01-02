@@ -380,16 +380,46 @@ class QdrantVectorStore:
                 search_params = models.SearchParams(hnsw_ef=self.search_ef, exact=self.search_exact)
             except Exception:
                 search_params = None
-            search_result = self.client.search(
-                collection_name=self.collection_name,
-                query_vector=query_vector,
-                query_filter=query_filter,
-                limit=limit,
-                score_threshold=score_threshold,
-                with_payload=True,
-                with_vectors=False,
-                search_params=search_params
-            )
+            
+            # 使用search方法 (兼容不同版本的Qdrant API)
+            try:
+                # 尝试使用search方法 (最通用)
+                search_result = self.client.search(
+                    collection_name=self.collection_name,
+                    query_vector=query_vector,
+                    query_filter=query_filter,
+                    limit=limit,
+                    score_threshold=score_threshold,
+                    with_payload=True,
+                    with_vectors=False,
+                    search_params=search_params
+                )
+            except (AttributeError, TypeError) as e:
+                # 如果search方法不存在或参数不对，尝试使用query_points
+                try:
+                    search_result = self.client.query_points(
+                        collection_name=self.collection_name,
+                        query=query_vector,
+                        query_filter=query_filter,
+                        limit=limit,
+                        score_threshold=score_threshold,
+                        with_payload=True,
+                        with_vectors=False,
+                        search_params=search_params
+                    ).points
+                except (AttributeError, TypeError):
+                    # 最后尝试search_points
+                    from qdrant_client.models import PointId
+                    search_result = self.client.search_points(
+                        collection_name=self.collection_name,
+                        query_vector=query_vector,
+                        query_filter=query_filter,
+                        limit=limit,
+                        score_threshold=score_threshold,
+                        with_payload=True,
+                        with_vectors=False,
+                        search_params=search_params
+                    ).points
             
             # 转换结果格式
             results = []

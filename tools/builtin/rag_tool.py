@@ -57,7 +57,7 @@ class RAGTool(Tool):
         self.qdrant_api_key = qdrant_api_key or os.getenv("QDRANT_API_KEY")
         self.collection_name = collection_name
         self.rag_namespace = rag_namespace
-        self._pipelines: Dict[str, Dict[str, Any]] = {}
+        self._pipelines: Dict[str, Dict[str, Any]] = {} # 命名空间到RAG管道的映射
         
         # 确保知识库目录存在
         os.makedirs(knowledge_base_path, exist_ok=True)
@@ -138,7 +138,7 @@ class RAGTool(Tool):
                     chunk_size=parameters.get("chunk_size", 800),
                     chunk_overlap=parameters.get("chunk_overlap", 100)
                 )
-            elif action == "ask":
+            elif action == "ask": 
                 question = parameters.get("question") or parameters.get("query")
                 return self._ask(
                     question=question,
@@ -195,13 +195,13 @@ class RAGTool(Tool):
                 required=False
             ),
             ToolParameter(
-                name="question",
+                name="question", # 用户问题
                 type="string", 
                 description="用户问题（用于智能问答）",
                 required=False
             ),
             ToolParameter(
-                name="query",
+                name="query",   # 搜索查询词
                 type="string",
                 description="搜索查询词（用于基础搜索）",
                 required=False
@@ -412,13 +412,13 @@ class RAGTool(Tool):
                         return str(text).encode('utf-8', errors='ignore').decode('utf-8')
                     except Exception:
                         return str(text)
-                
+                # 清理内容和来源
                 clean_content = clean_text(content)
                 clean_source = clean_text(source)
-                
+                # 添加结果条目
                 search_result.append(f"\n{i}. 文档: **{clean_source}** (相似度: {score:.3f})")
                 search_result.append(f"   {clean_content}")
-                
+                # 添加章节信息（如果有）
                 if include_citations and meta.get("heading_path"):
                     clean_heading = clean_text(str(meta['heading_path']))
                     search_result.append(f"   章节: {clean_heading}")
@@ -522,11 +522,11 @@ class RAGTool(Tool):
             context = "\n\n".join(context_parts)
             if len(context) > max_chars:
                 # 智能截断，保持完整性
-                context = self._smart_truncate_context(context, max_chars)
+                context = self._smart_truncate_context(context, max_chars) # 调用智能截断方法
             
             # 4. 构建增强提示词
-            system_prompt = self._build_system_prompt()
-            user_prompt = self._build_user_prompt(user_question, context)
+            system_prompt = self._build_system_prompt() # 调用系统提示词构建方法
+            user_prompt = self._build_user_prompt(user_question, context) # 调用用户提示词构建方法
             
             enhanced_prompt = [
                 {"role": "system", "content": system_prompt},
@@ -571,13 +571,13 @@ class RAGTool(Tool):
             return context
         
         # 寻找最近的段落分隔符
-        truncated = context[:max_chars]
-        last_break = truncated.rfind("\n\n")
+        truncated = context[:max_chars] # 初步截断
+        last_break = truncated.rfind("\n\n")# 寻找最后的双换行符作为段落分隔点
         
         if last_break > max_chars * 0.7:  # 如果断点位置合理
-            return truncated[:last_break] + "\n\n[...更多内容被截断]"
+            return truncated[:last_break] + "\n\n[...更多内容被截断]" # 在断点处截断
         else:
-            return truncated[:max_chars-20] + "...[内容被截断]"
+            return truncated[:max_chars-20] + "...[内容被截断]" # 直接截断并添加提示
     
     def _build_system_prompt(self) -> str:
         """构建系统提示词"""
@@ -682,8 +682,9 @@ class RAGTool(Tool):
             # 添加存储统计
             if stats:
                 store_type = stats.get("store_type", "unknown")
+                # 尝试获取向量数量
                 total_vectors = (
-                    stats.get("points_count") or 
+                    stats.get("points_count") or  
                     stats.get("vectors_count") or 
                     stats.get("count") or 0
                 )
@@ -771,9 +772,9 @@ class RAGTool(Tool):
             for i, text in enumerate(texts):
                 if not text or not text.strip():
                     continue
-                    
+                # 创建临时文件
                 doc_id = document_ids[i] if document_ids else f"batch_text_{i}"
-                tmp_path = os.path.join(self.knowledge_base_path, f"{doc_id}.md")
+                tmp_path = os.path.join(self.knowledge_base_path, f"{doc_id}.md") # 临时文件路径
                 
                 try:
                     with open(tmp_path, 'w', encoding='utf-8') as f:
