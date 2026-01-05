@@ -90,10 +90,10 @@ class TerminalTool(Tool):
             description="命令行工具 - 执行安全的文件系统、文本处理和代码执行命令（ls, cat, grep, head, tail等）"
         )
         
-        self.workspace = Path(workspace).resolve()
-        self.timeout = timeout
-        self.max_output_size = max_output_size
-        self.allow_cd = allow_cd
+        self.workspace = Path(workspace).resolve() # 工作目录（绝对路径）
+        self.timeout = timeout # 超时时间（秒）
+        self.max_output_size = max_output_size # 最大输出大小
+        self.allow_cd = allow_cd # 是否允许 cd 命令
         
         # 当前工作目录（相对于workspace）
         self.current_dir = self.workspace
@@ -170,7 +170,7 @@ class TerminalTool(Tool):
         
         # 检查是否在工作目录内
         try:
-            new_dir.relative_to(self.workspace)
+            new_dir.relative_to(self.workspace) # 若不在则抛出异常
         except ValueError:
             return f"❌ 不允许访问工作目录外的路径: {new_dir}"
         
@@ -189,7 +189,7 @@ class TerminalTool(Tool):
         """执行命令"""
         try:
             # 在当前目录下执行命令
-            result = subprocess.run(
+            result = subprocess.run( # subprocess.run 用于执行外部命令
                 command,
                 shell=True,
                 cwd=str(self.current_dir),

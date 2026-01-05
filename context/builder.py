@@ -19,7 +19,14 @@ from ..tools import MemoryTool, RAGTool
 
 @dataclass
 class ContextPacket:
-    """上下文信息包"""
+    """上下文信息包
+    Attributes:
+        content: 信息内容
+        timestamp: 时间戳
+        token_count: Token 数量
+        relevance_score: 相关性分数(0.0-1.0)
+        metadata: 可选的元数据
+    """
     content: str
     timestamp: datetime = field(default_factory=datetime.now)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -34,7 +41,16 @@ class ContextPacket:
 
 @dataclass
 class ContextConfig:
-    """上下文构建配置"""
+    """上下文构建配置
+    Attributes:
+        max_tokens: 最大 token 数量
+        reserve_ratio: 为系统指令预留的比例(0.0-1.0)
+        min_relevance: 最低相关性阈值
+        enable_mmr: 是否启用最大边际相关性（多样性）
+        mmr_lambda: MMR平衡参数（0=纯多样性, 1=纯相关性）
+        system_prompt_template: 系统提示模板
+        enable_compression: 是否启用压缩
+    """
     max_tokens: int = 8000  # 总预算
     reserve_ratio: float = 0.15  # 生成余量（10-20%）
     min_relevance: float = 0.3  # 最小相关性阈值
@@ -81,9 +97,9 @@ class ContextBuilder:
     def build(
         self,
         user_query: str,
-        conversation_history: Optional[List[Message]] = None,
-        system_instructions: Optional[str] = None,
-        additional_packets: Optional[List[ContextPacket]] = None
+        conversation_history: Optional[List[Message]] = None, # 对话历史
+        system_instructions: Optional[str] = None, # 系统指令
+        additional_packets: Optional[List[ContextPacket]] = None # 额外包
     ) -> str:
         """构建完整上下文
         
@@ -140,24 +156,25 @@ class ContextBuilder:
         if self.memory_tool:
             try:
                 # 搜索任务状态相关记忆
-                state_results = self.memory_tool.execute(
-                    "search",
-                    query="(任务状态 OR 子目标 OR 结论 OR 阻塞)",
-                    min_importance=0.7,
-                    limit=5
-                )
-                if state_results and "未找到" not in state_results:
+                state_results = self.memory_tool.run({
+                    "action": "search",
+                    "query": "(任务状态 OR 子目标 OR 结论 OR 阻塞)",
+                    "min_importance": 0.7,
+                    "limit": 5
+                })
+                
+                if state_results and "未找到" not in state_results: 
                     packets.append(ContextPacket(
                         content=state_results,
                         metadata={"type": "task_state", "importance": "high"}
                     ))
                 
                 # 搜索与当前查询相关的记忆
-                related_results = self.memory_tool.execute(
-                    "search",
-                    query=user_query,
-                    limit=5
-                )
+                related_results = self.memory_tool.run({
+                    "action": "search",
+                    "query": user_query,
+                    "limit": 5
+                })
                 if related_results and "未找到" not in related_results:
                     packets.append(ContextPacket(
                         content=related_results,
@@ -185,7 +202,7 @@ class ContextBuilder:
         # P3: 对话历史（辅助材料）
         if conversation_history:
             # 只保留最近N条
-            recent_history = conversation_history[-10:]
+            recent_history = conversation_history[-10:] # 最近10条
             history_text = "\n".join([
                 f"[{msg.role}] {msg.content}"
                 for msg in recent_history
@@ -205,22 +222,29 @@ class ContextBuilder:
         packets: List[ContextPacket],
         user_query: str
     ) -> List[ContextPacket]:
-        """Select: 基于分数与预算的筛选"""
+        """Select: 基于分数与预算的筛选
+        Args:
+            packets: 候选信息包列表
+            user_query: 用户查询(用于计算相关性)
+
+        Returns:
+            List[ContextPacket]: 选中的信息包列表
+        """
         # 1) 计算相关性（关键词重叠）
         query_tokens = set(user_query.lower().split())
         for packet in packets:
             content_tokens = set(packet.content.lower().split())
             if len(query_tokens) > 0:
-                overlap = len(query_tokens & content_tokens)
-                packet.relevance_score = overlap / len(query_tokens)
+                overlap = len(query_tokens & content_tokens) #得出重叠词的数量
+                packet.relevance_score = overlap / len(query_tokens) # 相关性得分
             else:
                 packet.relevance_score = 0.0
         
-        # 2) 计算新近性（指数衰减）
+        # 2) 计算新近性（指数衰减），新近的时间点得分更高
         def recency_score(ts: datetime) -> float:
-            delta = max((datetime.now() - ts).total_seconds(), 0)
+            delta = max((datetime.now() - ts).total_seconds(), 0) # 秒数差
             tau = 3600  # 1小时时间尺度，可暴露到配置
-            return math.exp(-delta / tau)
+            return math.exp(-delta / tau) # 指数衰减
         
         # 3) 计算复合分：0.7*相关性 + 0.3*新近性
         scored_packets: List[Tuple[float, ContextPacket]] = []
@@ -248,7 +272,7 @@ class ContextBuilder:
                 selected.append(p)
                 used_tokens += p.token_count
         
-        # 再按分数加入其余
+        # 再按分数加入其余，从高到低。预算满为止
         for p in filtered:
             if used_tokens + p.token_count > available_tokens:
                 continue
@@ -263,7 +287,16 @@ class ContextBuilder:
         user_query: str,
         system_instructions: Optional[str]
     ) -> str:
-        """Structure: 组织成结构化上下文模板"""
+        """Structure: 组织成结构化上下文模板
+        
+        Args:
+            selected_packets: 选中的信息包列表
+            user_query: 用户查询
+            system_instructions: 系统指令（可选）
+
+        Returns:
+            str: 结构化的上下文字符串
+        """
         sections = []
         
         # [Role & Policies] - 系统指令
