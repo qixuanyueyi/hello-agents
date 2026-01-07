@@ -9,10 +9,12 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class MemoryItem(BaseModel):
     """记忆项数据结构"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
     id: str
     content: str
     memory_type: str
@@ -20,9 +22,6 @@ class MemoryItem(BaseModel):
     timestamp: datetime
     importance: float = 0.5
     metadata: Dict[str, Any] = {}
-
-    class Config:
-        arbitrary_types_allowed = True
 
 class MemoryConfig(BaseModel):
     """记忆系统配置"""

@@ -37,7 +37,7 @@ except ImportError:
 __all__ = [
     "MCPClient",
     "MCPServer",
-    "create_context",
-    "parse_context",
+    "create_context", # 导出创建上下文的函数
+    "parse_context", # 导出解析上下文的函数
 ]
 

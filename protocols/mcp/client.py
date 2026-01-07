@@ -198,14 +198,18 @@ class MCPClient:
     async def __aenter__(self):
         """异步上下文管理器入口"""
         print("🔗 连接到 MCP 服务器...")
-        self.client = Client(self.server_source)
-        self._context_manager = self.client
-        await self._context_manager.__aenter__()
+        self.client = Client(self.server_source) # 创建 MCP 客户端实例
+        self._context_manager = self.client # 获取异步上下文管理器
+        await self._context_manager.__aenter__() # 进入上下文
         print("✅ 连接成功！")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """异步上下文管理器出口"""
+        """异步上下文管理器出口
+                exc_type: 异常类型
+                exc_val: 异常值
+                exc_tb: 异常追踪信息
+        """
         if self._context_manager:
             await self._context_manager.__aexit__(exc_type, exc_val, exc_tb)
             self.client = None
@@ -220,18 +224,18 @@ class MCPClient:
         result = await self.client.list_tools()
 
         # 处理不同的返回格式
-        if hasattr(result, 'tools'):
+        if hasattr(result, 'tools'): # FastMCP 返回 ToolList 对象
             tools = result.tools
-        elif isinstance(result, list):
+        elif isinstance(result, list): # 直接返回工具列表
             tools = result
         else:
-            tools = []
+            tools = [] # 未知格式，返回空列表
 
         return [
             {
                 "name": tool.name,
                 "description": tool.description or "",
-                "input_schema": tool.inputSchema if hasattr(tool, 'inputSchema') else {}
+                "input_schema": tool.inputSchema if hasattr(tool, 'inputSchema') else {} # 兼容 FastMCP 2.x
             }
             for tool in tools
         ]
@@ -241,6 +245,7 @@ class MCPClient:
         if not self.client:
             raise RuntimeError("Client not connected. Use 'async with client:' context manager.")
 
+        # 调用工具
         result = await self.client.call_tool(tool_name, arguments)
 
         # 解析结果 - FastMCP 返回 ToolResult 对象
@@ -252,7 +257,7 @@ class MCPClient:
                 elif hasattr(content, 'data'):
                     return content.data
             return [
-                getattr(c, 'text', getattr(c, 'data', str(c)))
+                getattr(c, 'text', getattr(c, 'data', str(c))) # 尝试获取 text 或 data 属性
                 for c in result.content
             ]
         return None
@@ -268,7 +273,7 @@ class MCPClient:
                 "uri": resource.uri,
                 "name": resource.name or "",
                 "description": resource.description or "",
-                "mime_type": getattr(resource, 'mimeType', None)
+                "mime_type": getattr(resource, 'mimeType', None) # 兼容 FastMCP 2.x
             }
             for resource in result.resources
         ]

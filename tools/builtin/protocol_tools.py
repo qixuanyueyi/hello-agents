@@ -193,9 +193,10 @@ class MCPTool(Tool):
         try:
             from fastmcp import FastMCP
 
+            # 创建内置服务器实例
             server = FastMCP("HelloAgents-BuiltinServer")
 
-            @server.tool()
+            @server.tool() # 注册为MCP工具
             def add(a: float, b: float) -> float:
                 """加法计算器"""
                 return a + b
@@ -246,6 +247,7 @@ class MCPTool(Tool):
         try:
             from hello_agents.protocols.mcp.client import MCPClient
             import asyncio
+            import sys
 
             async def discover():
                 client_source = self.server if self.server else self.server_command
@@ -258,11 +260,19 @@ class MCPTool(Tool):
                 loop = asyncio.get_running_loop()
                 # 如果已有循环，在新线程中运行
                 import concurrent.futures
-                def run_in_thread():
-                    new_loop = asyncio.new_event_loop()
+                def run_in_thread(): # 在新线程中运行新的事件循环
+                    # Windows 特定: 使用 ProactorEventLoop
+                    if sys.platform == 'win32':
+                        new_loop = asyncio.ProactorEventLoop()
+                    else:
+                        new_loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(new_loop)
                     try:
-                        return new_loop.run_until_complete(discover())
+                        result = new_loop.run_until_complete(discover())
+                        # Windows: 等待清理子进程资源
+                        if sys.platform == 'win32':
+                            new_loop.run_until_complete(asyncio.sleep(0.1))
+                        return result
                     finally:
                         new_loop.close()
 
@@ -271,6 +281,9 @@ class MCPTool(Tool):
                     self._available_tools = future.result()
             except RuntimeError:
                 # 没有运行中的循环
+                # Windows 特定: 使用 ProactorEventLoop
+                if sys.platform == 'win32':
+                    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
                 self._available_tools = asyncio.run(discover())
 
         except Exception as e:
@@ -354,6 +367,9 @@ class MCPTool(Tool):
             操作结果
         """
         from hello_agents.protocols.mcp.client import MCPClient
+        import sys
+        import asyncio
+        import concurrent.futures
 
         # 智能推断action：如果没有action但有tool_name，自动设置为call_tool
         action = parameters.get("action", "").lower()
@@ -366,9 +382,8 @@ class MCPTool(Tool):
         
         try:
             # 使用增强的异步客户端
-            import asyncio
-            from hello_agents.protocols.mcp.client import MCPClient
 
+            # 定义异步操作，运行不同的MCP命令
             async def run_mcp_operation():
                 # 根据配置选择客户端创建方式
                 if self.server:
@@ -435,29 +450,51 @@ class MCPTool(Tool):
                     else:
                         return f"错误：不支持的操作 '{action}'"
 
-            # 运行异步操作
+            # 运行异步操作，若已有事件循环则在新线程中运行新的事件循环      
             try:
                 # 检查是否已有运行中的事件循环
                 try:
                     loop = asyncio.get_running_loop()
                     # 如果有运行中的循环，在新线程中运行新的事件循环
-                    import concurrent.futures
-                    import threading
 
                     def run_in_thread():
                         # 在新线程中创建新的事件循环
-                        new_loop = asyncio.new_event_loop()
+                        # Windows 特定: 使用 ProactorEventLoop
+                        if sys.platform == 'win32':
+                            new_loop = asyncio.ProactorEventLoop()
+                        else:
+                            new_loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(new_loop)
                         try:
-                            return new_loop.run_until_complete(run_mcp_operation())
+                            result = new_loop.run_until_complete(run_mcp_operation())
+                            # Windows: 等待清理子进程资源
+                            if sys.platform == 'win32':
+                                # 给子进程更多时间清理
+                                new_loop.run_until_complete(asyncio.sleep(0.2))
+                                # 显式关闭所有挂起的任务
+                                pending = asyncio.all_tasks(new_loop)
+                                for task in pending:
+                                    task.cancel()
+                                if pending:
+                                    new_loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                            return result
                         finally:
+                            try:
+                                # 给事件循环时间处理回调
+                                new_loop.run_until_complete(asyncio.sleep(0.05))
+                            except:
+                                pass
                             new_loop.close()
-
+                            
+                    # 在新线程中运行新的事件循环
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         future = executor.submit(run_in_thread)
                         return future.result()
                 except RuntimeError:
                     # 没有运行中的循环，直接运行
+                    # Windows 特定: 使用 ProactorEventLoop
+                    if sys.platform == 'win32':
+                        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
                     return asyncio.run(run_mcp_operation())
             except Exception as e:
                 return f"异步操作失败: {str(e)}"
