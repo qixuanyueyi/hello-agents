@@ -69,8 +69,8 @@ class A2AServer:
 
         # 禁用 Flask 的日志输出（可选）
         import logging
-        log = logging.getLogger('werkzeug')
-        log.setLevel(logging.ERROR)
+        log = logging.getLogger('werkzeug') # 这是在 Flask 中处理请求的日志
+        log.setLevel(logging.ERROR) # 设置日志级别为 ERROR，忽略 INFO 和 DEBUG 日志
 
         @app.route('/info', methods=['GET'])
         def get_info():
@@ -80,7 +80,7 @@ class A2AServer:
         @app.route('/skills', methods=['GET'])
         def list_skills():
             """列出所有技能"""
-            return jsonify({
+            return jsonify({ # jsonify为 Flask 提供的将字典转换为 JSON 响应的函数
                 "skills": list(self.skills.keys()),
                 "count": len(self.skills)
             })
@@ -203,7 +203,7 @@ class A2AClient:
                 json={"question": question},
                 timeout=30
             )
-            response.raise_for_status()
+            response.raise_for_status() # 如果响应状态码不是 200，会抛出异常
             return response.json().get("answer", "No response")
         except Exception as e:
             return f"Error communicating with agent: {str(e)}"
