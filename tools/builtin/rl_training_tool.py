@@ -155,9 +155,9 @@ class RLTrainingTool(Tool):
         custom_reward = parameters.get("custom_reward", None)
 
         # 支持训练监控配置
-        use_wandb = parameters.get("use_wandb", False)
-        use_tensorboard = parameters.get("use_tensorboard", True)
-        wandb_project = parameters.get("wandb_project", None)
+        use_wandb = parameters.get("use_wandb", False) # wandb监控
+        use_tensorboard = parameters.get("use_tensorboard", True) # tensorboard监控
+        wandb_project = parameters.get("wandb_project", None) # wandb项目名称
 
         print(f"\n{'='*60}")
         print(f"🚀 开始 {algorithm.upper()} 训练")
@@ -225,10 +225,10 @@ class RLTrainingTool(Tool):
         """处理数据集加载操作"""
         from hello_agents.rl import create_sft_dataset, create_rl_dataset
 
-        format_type = parameters.get("format", "sft").lower()
-        split = parameters.get("split", "train")
-        max_samples = parameters.get("max_samples", 100)
-        model_name = parameters.get("model_name", "Qwen/Qwen3-0.6B")
+        format_type = parameters.get("format", "sft").lower() # 数据格式
+        split = parameters.get("split", "train") # 数据集划分
+        max_samples = parameters.get("max_samples", 100) # 最大样本数
+        model_name = parameters.get("model_name", "Qwen/Qwen3-0.6B") # 用于RL数据集的模型名称
 
         if format_type == "sft":
             dataset = create_sft_dataset(split=split, max_samples=max_samples)
@@ -238,7 +238,7 @@ class RLTrainingTool(Tool):
             return json.dumps({
                 "status": "error",
                 "message": f"不支持的数据格式: {format_type}。支持的格式: sft, rl"
-            }, ensure_ascii=False, indent=2)
+            }, ensure_ascii=False, indent=2) # ensure_ascii=False用于支持中文, indent=2用于美化输出
 
         result = {
             "status": "success",
@@ -332,11 +332,11 @@ class RLTrainingTool(Tool):
             # 加载模型和tokenizer
             print(f"📥 加载模型: {model_path}...")
             try:
-                model = AutoModelForCausalLM.from_pretrained(model_path)
-                tokenizer = AutoTokenizer.from_pretrained(model_path)
+                model = AutoModelForCausalLM.from_pretrained(model_path) # 从本地或远程加载模型
+                tokenizer = AutoTokenizer.from_pretrained(model_path) # 从本地或远程加载tokenizer
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 model = model.to(device)
-                model.eval()
+                model.eval() # 设置为评估模式
             except Exception as e:
                 return json.dumps({
                     "status": "error",
@@ -373,13 +373,13 @@ class RLTrainingTool(Tool):
                         max_new_tokens=128,  # 减少生成长度加快速度
                         temperature=0.7,
                         do_sample=False,  # 使用贪婪解码加快速度
-                        pad_token_id=tokenizer.pad_token_id
+                        pad_token_id=tokenizer.pad_token_id # 避免警告
                     )
                 # 只取生成的部分,不包括输入
                 completion = tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True)
 
-                completions.append(completion)
-                ground_truths.append(ground_truth)
+                completions.append(completion) # 保存生成结果
+                ground_truths.append(ground_truth) # 保存真实答案
 
                 # 如果没有tqdm,每10个样本打印一次进度
                 if not use_tqdm and (i + 1) % 10 == 0:
@@ -388,7 +388,7 @@ class RLTrainingTool(Tool):
             # 计算奖励
             print("📊 计算评估指标...")
             reward_fn = create_accuracy_reward()
-            rewards = reward_fn(completions, ground_truth=ground_truths)
+            rewards = reward_fn(completions, ground_truth=ground_truths) # 计算奖励
 
             # 计算统计信息
             avg_reward = sum(rewards) / len(rewards)

@@ -35,8 +35,10 @@ class GSM8KDataset:
         self.tokenizer = tokenizer
 
         print(f"📥 加载 GSM8K 数据集 (split={split})...")
+        # 使用HuggingFace Datasets加载数据集
         self.dataset = load_dataset("openai/gsm8k", "main", split=split)
 
+        # 限制样本数（如果指定）
         if max_samples:
             self.dataset = self.dataset.select(range(min(max_samples, len(self.dataset))))
             print(f"   使用 {len(self.dataset)} 个样本（限制：{max_samples}）")
@@ -59,8 +61,8 @@ class GSM8KDataset:
         # 提取最终答案（GSM8K的答案格式为：推理过程\n#### 最终答案）
         if "####" in answer:
             reasoning, final_answer = answer.split("####")
-            reasoning = reasoning.strip()
-            final_answer = final_answer.strip()
+            reasoning = reasoning.strip() # 提取推理过程
+            final_answer = final_answer.strip() # 提取最终答案
         else:
             reasoning = answer
             final_answer = ""
@@ -105,7 +107,8 @@ class GSM8KDataset:
         # 如果提供了tokenizer,应用chat template
         if self.tokenizer:
             messages = [{"role": "user", "content": prompt_content}]
-            prompt_text = self.tokenizer.apply_chat_template(
+            # chat template用来格式化对话
+            prompt_text = self.tokenizer.apply_chat_template( # 使用tokenizer的chat template方法
                 messages,
                 tokenize=False,
                 add_generation_prompt=True
@@ -128,10 +131,11 @@ class GSM8KDataset:
         Returns:
             HuggingFace Dataset对象
         """
+        # 格式化数据集
         if self.format_type == "sft":
             formatted_dataset = self.dataset.map(
                 self.format_for_sft,
-                remove_columns=self.dataset.column_names
+                remove_columns=self.dataset.column_names # 移除原始列
             )
         elif self.format_type == "rl":
             formatted_dataset = self.dataset.map(
@@ -206,7 +210,7 @@ def format_math_dataset(
     """
     from transformers import AutoTokenizer
 
-    # 加载tokenizer
+    # 加载tokenizer，tokenizer是分词器
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 
     # 定义格式化函数

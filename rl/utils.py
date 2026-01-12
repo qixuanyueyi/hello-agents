@@ -37,10 +37,10 @@ class TrainingConfig:
     
     # LoRA配置
     use_lora: bool = True
-    lora_r: int = 16
-    lora_alpha: int = 32
-    lora_dropout: float = 0.05
-    lora_target_modules: list = field(default_factory=lambda: ["q_proj", "v_proj"])
+    lora_r: int = 16 # 低秩矩阵秩
+    lora_alpha: int = 32 # LoRA缩放系数
+    lora_dropout: float = 0.05 # Dropout概率
+    lora_target_modules: list = field(default_factory=lambda: ["q_proj", "v_proj"]) # 目标模块列表
     
     # 监控配置
     use_wandb: bool = False
