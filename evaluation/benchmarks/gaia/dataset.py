@@ -32,7 +32,7 @@ class GAIADataset:
     def __init__(
         self,
         dataset_name: str = "gaia-benchmark/GAIA",
-        split: str = "validation",
+        split: str = "validation", 
         level: Optional[int] = None,
         local_data_dir: Optional[Union[str, Path]] = None
     ):
@@ -63,14 +63,17 @@ class GAIADataset:
         Returns:
             数据集列表,每个元素包含问题、答案、难度等
         """
+        # 记录是否使用了level-specific的parquet文件
+        self._used_level_specific_parquet = False
+        
         if self._is_local:
             self.data = self._load_from_local()
         else:
             self.data = self._load_from_huggingface()
 
-        # 按级别过滤
-        if self.level is not None:
-            self.data = [item for item in self.data if item.get("level") == self.level]
+        # 按级别过滤（如果使用了level-specific parquet则跳过，因为数据已经是该级别的）
+        if self.level is not None and not self._used_level_specific_parquet:
+            self.data = [item for item in self.data if int(item.get("level", 0)) == self.level]
 
         print(f"✅ GAIA数据集加载完成")
         print(f"   数据源: {self.dataset_name}")
@@ -156,33 +159,76 @@ class GAIADataset:
                 print("   2. HF_TOKEN正确且有效")
                 return []
 
-            # 读取metadata.jsonl文件
-            metadata_file = local_dir / "2023" / self.split / "metadata.jsonl"
-            if not metadata_file.exists():
-                print(f"   ⚠️ 未找到metadata文件: {metadata_file}")
-                return []
-
-            # 加载数据
+            # 读取metadata文件（支持parquet和jsonl格式）
+            split_dir = local_dir / "2023" / self.split
+            
+            # 优先使用parquet格式（根据level选择对应文件）
+            if self.level is not None:
+                metadata_file = split_dir / f"metadata.level{self.level}.parquet"
+            else:
+                metadata_file = split_dir / "metadata.parquet"
+            
+            # 回退到jsonl格式
+            metadata_jsonl = split_dir / "metadata.jsonl"
+            
             data = []
-            with open(metadata_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
+            
+            if metadata_file.exists():
+                # 使用pandas读取parquet
+                try:
+                    import pandas as pd
+                    df = pd.read_parquet(metadata_file)
+                    print(f"   ✓ 读取parquet文件: {metadata_file.name}")
+                    
+                    # 如果使用的是level-specific的parquet文件，设置标志
+                    if self.level is not None and f"level{self.level}" in metadata_file.name:
+                        self._used_level_specific_parquet = True
+                    
+                    for _, row in df.iterrows():
+                        item = row.to_dict()
+                        
+                        # 跳过占位符
+                        if item.get("task_id") == "0-0-0-0-0":
+                            continue
+                        
+                        # 调整文件路径
+                        if item.get("file_name"):
+                            item["file_name"] = str(split_dir / item["file_name"])
+                        
+                        # 标准化并添加
+                        standardized_item = self._standardize_item(item)
+                        data.append(standardized_item)
+                        
+                except ImportError:
+                    print("   ⚠️ pandas未安装，无法读取parquet格式")
+                    print("   提示: pip install pandas pyarrow")
+                    return []
+                    
+            elif metadata_jsonl.exists():
+                # 回退到jsonl格式
+                with open(metadata_jsonl, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
 
-                    item = json.loads(line)
+                        item = json.loads(line)
 
-                    # 跳过占位符
-                    if item.get("task_id") == "0-0-0-0-0":
-                        continue
+                        # 跳过占位符
+                        if item.get("task_id") == "0-0-0-0-0":
+                            continue
 
-                    # 调整文件路径
-                    if item.get("file_name"):
-                        item["file_name"] = str(local_dir / "2023" / self.split / item["file_name"])
+                        # 调整文件路径
+                        if item.get("file_name"):
+                            item["file_name"] = str(split_dir / item["file_name"])
 
-                    # 标准化并添加
-                    standardized_item = self._standardize_item(item)
-                    data.append(standardized_item)
+                        # 标准化并添加
+                        standardized_item = self._standardize_item(item)
+                        data.append(standardized_item)
+            else:
+                print(f"   ⚠️ 未找到metadata文件")
+                print(f"   尝试的路径: {metadata_file}")
+                return []
 
             print(f"   ✓ 加载了 {len(data)} 个样本")
             return data
