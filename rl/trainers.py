@@ -309,7 +309,7 @@ class GRPOTrainerWrapper(BaseTrainerWrapper):
         if not report_to:
             report_to = ["none"]
 
-        # 配置训练参数
+        # 配置训练参数,lora相关参数待添加
         training_args = GRPOConfig(
             output_dir=self.config.output_dir,
             num_train_epochs=self.config.num_train_epochs,

@@ -100,10 +100,10 @@ class BFCLEvaluator:
                 if category not in categories:
                     categories[category] = {"total": 0, "correct": 0, "results": []}
 
-                categories[category]["total"] += 1
+                categories[category]["total"] += 1 # 总样本数
                 if sample_result["success"]:
-                    categories[category]["correct"] += 1
-                categories[category]["results"].append(sample_result)
+                    categories[category]["correct"] += 1 # 成功样本数
+                categories[category]["results"].append(sample_result) # 添加样本结果
 
             except Exception as e:
                 print(f"   ⚠️ 样本 {i} 评估失败: {e}")
@@ -117,12 +117,12 @@ class BFCLEvaluator:
 
         # 计算总体指标
         total_samples = len(results)
-        correct_samples = sum(1 for r in results if r["success"])
+        correct_samples = sum(1 for r in results if r["success"]) 
         overall_accuracy = correct_samples / total_samples if total_samples > 0 else 0.0
 
         # 计算分类指标
         category_metrics = {}
-        for cat, cat_data in categories.items():
+        for cat, cat_data in categories.items(): # 遍历类别
             accuracy = cat_data["correct"] / cat_data["total"] if cat_data["total"] > 0 else 0.0
             category_metrics[cat] = {
                 "total": cat_data["total"],
@@ -131,15 +131,15 @@ class BFCLEvaluator:
             }
 
         final_results = {
-            "benchmark": "BFCL",
-            "agent_name": getattr(agent, 'name', 'Unknown'),
-            "evaluation_mode": self.evaluation_mode,
-            "category": self.category,
-            "total_samples": total_samples,
-            "correct_samples": correct_samples,
-            "overall_accuracy": overall_accuracy,
-            "category_metrics": category_metrics,
-            "detailed_results": results
+            "benchmark": "BFCL", # 基准测试
+            "agent_name": getattr(agent, 'name', 'Unknown'), # 智能体名称
+            "evaluation_mode": self.evaluation_mode, # 评估模式
+            "category": self.category, # 评估类别
+            "total_samples": total_samples, # 总样本数
+            "correct_samples": correct_samples, # 成功样本数
+            "overall_accuracy": overall_accuracy, # 总体准确率
+            "category_metrics": category_metrics, # 分类指标
+            "detailed_results": results # 详细结果
         }
 
         print(f"✅ BFCL 评估完成")
@@ -251,8 +251,8 @@ class BFCLEvaluator:
         """从响应中提取函数调用"""
         try:
             # 尝试直接解析JSON
-            if response.strip().startswith('[') and response.strip().endswith(']'):
-                return json.loads(response.strip())
+            if response.strip().startswith('[') and response.strip().endswith(']'): # JSON数组
+                return json.loads(response.strip()) # 解析JSON
 
             # 使用正则表达式查找JSON数组
             json_pattern = r'\[.*?\]'
@@ -291,8 +291,8 @@ class BFCLEvaluator:
         1. BFCL v4格式：[{"func_name": {"param": [value1, value2]}}]
         2. 字符串格式：["func_name(param=value)"]
         """
-        if not expected:
-            return len(predicted) == 0, 1.0 if len(predicted) == 0 else 0.0
+        if not expected: # 如果没有ground truth
+            return len(predicted) == 0, 1.0 if len(predicted) == 0 else 0.0 # 如果没有预测，返回1.0，否则返回0.0
 
         try:
             # 检测ground truth格式
@@ -314,24 +314,24 @@ class BFCLEvaluator:
         predicted: [{"name": "func_name", "arguments": {"param": value}}]
         expected: [{"func_name": {"param": [value1, value2]}}]
         """
-        if len(predicted) != len(expected):
-            return False, 0.0
+        if len(predicted) != len(expected): # 如果预测和ground truth长度不一致
+            return False, 0.0 # 返回失败
 
         matches = 0
-        for pred_call in predicted:
-            if not isinstance(pred_call, dict) or "name" not in pred_call:
+        for pred_call in predicted: # 遍历预测
+            if not isinstance(pred_call, dict) or "name" not in pred_call: # 如果预测不是字典或没有name
                 continue
 
-            pred_func_name = pred_call["name"]
-            pred_args = pred_call.get("arguments", {})
+            pred_func_name = pred_call["name"] # 获取预测函数名
+            pred_args = pred_call.get("arguments", {}) # 获取预测参数
 
             # 在expected中查找匹配的函数调用
             for exp_call in expected:
-                if not isinstance(exp_call, dict):
+                if not isinstance(exp_call, dict): # 如果ground truth不是字典
                     continue
 
                 # expected格式：{"func_name": {"param": [values]}}
-                for exp_func_name, exp_params in exp_call.items():
+                for exp_func_name, exp_params in exp_call.items(): 
                     if exp_func_name != pred_func_name:
                         continue
 
@@ -340,8 +340,8 @@ class BFCLEvaluator:
                         matches += 1
                         break
 
-        success = matches == len(expected)
-        score = matches / len(expected) if expected else 0.0
+        success = matches == len(expected) # 如果匹配数等于ground truth长度，返回成功
+        score = matches / len(expected) if expected else 0.0 # 计算得分
         return success, score
 
     def _compare_parameters(self, pred_params: Dict, exp_params: Dict) -> bool:
@@ -353,13 +353,13 @@ class BFCLEvaluator:
         """
         # 检查所有必需参数
         for param_name, expected_values in exp_params.items():
-            if param_name not in pred_params:
+            if param_name not in pred_params: # 如果预测参数中没有ground truth中的参数
                 # 参数缺失，检查是否有空字符串作为默认值
                 if not isinstance(expected_values, list) or "" not in expected_values:
                     return False
                 continue
 
-            pred_value = pred_params[param_name]
+            pred_value = pred_params[param_name] 
 
             # expected_values是数组，包含所有可接受的值
             if isinstance(expected_values, list):

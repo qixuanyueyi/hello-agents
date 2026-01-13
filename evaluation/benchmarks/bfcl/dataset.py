@@ -191,7 +191,7 @@ class BFCLDataset:
         Returns:
             Ground truth列表
         """
-        return self.ground_truth.get(sample_id, [])
+        return self.ground_truth.get(sample_id, []) # 如果ground truth不存在，返回空列表
 
     def get_sample(self, index: int) -> Dict[str, Any]:
         """获取单个样本
@@ -203,8 +203,8 @@ class BFCLDataset:
             样本数据
         """
         if not self.data:
-            self.load()
-        return self.data[index] if index < len(self.data) else {}
+            self.load() # 如果数据未加载，先加载数据
+        return self.data[index] if index < len(self.data) else {} # 如果索引超出范围，返回空字典
 
     def get_available_categories(self) -> List[str]:
         """获取所有可用的类别

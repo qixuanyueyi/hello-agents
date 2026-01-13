@@ -34,9 +34,9 @@ class BFCLMetrics:
         """
         if not predictions or not references:
             return 0.0
-
-        min_len = min(len(predictions), len(references))
-        correct = sum(1 for p, r in zip(predictions[:min_len], references[:min_len]) if p == r)
+        # min_len 是为了处理预测和参考答案长度不一致的情况
+        min_len = min(len(predictions), len(references)) # 计算最小长度
+        correct = sum(1 for p, r in zip(predictions[:min_len], references[:min_len]) if p == r) # 计算准确率
         return correct / min_len
 
     @staticmethod
@@ -52,18 +52,18 @@ class BFCLMetrics:
         """
         try:
             # 尝试解析为AST
-            pred_ast = ast.parse(predicted, mode='eval')
-            exp_ast = ast.parse(expected, mode='eval')
+            pred_ast = ast.parse(predicted, mode='eval') # 将预测的函数调用解析为AST
+            exp_ast = ast.parse(expected, mode='eval') # 将期望的函数调用解析为AST
 
             # 比较AST结构
-            pred_dump = ast.dump(pred_ast)
-            exp_dump = ast.dump(exp_ast)
+            pred_dump = ast.dump(pred_ast) # 将AST转换为字符串
+            exp_dump = ast.dump(exp_ast) # 将AST转换为字符串
 
             if pred_dump == exp_dump:
                 return 1.0
 
             # 计算结构相似度
-            similarity = BFCLMetrics._calculate_string_similarity(pred_dump, exp_dump)
+            similarity = BFCLMetrics._calculate_string_similarity(pred_dump, exp_dump) # 计算结构相似度
             return similarity
 
         except SyntaxError:
@@ -74,9 +74,9 @@ class BFCLMetrics:
     def _calculate_string_similarity(s1: str, s2: str) -> float:
         """计算字符串相似度（简化版Levenshtein距离）"""
         if s1 == s2:
-            return 1.0
+            return 1.0 # 如果两个字符串相等，返回1.0
         if not s1 or not s2:
-            return 0.0
+            return 0.0 # 如果其中一个字符串为空，返回0.0
 
         # 使用集合交集计算相似度
         set1 = set(s1.split())
@@ -85,10 +85,10 @@ class BFCLMetrics:
         if not set1 or not set2:
             return 0.0
 
-        intersection = len(set1 & set2)
-        union = len(set1 | set2)
+        intersection = len(set1 & set2) # 计算交集
+        union = len(set1 | set2) # 计算并集
 
-        return intersection / union if union > 0 else 0.0
+        return intersection / union if union > 0 else 0.0 # 返回交集除以并集
 
     @staticmethod
     def calculate_parameter_accuracy(
@@ -111,20 +111,20 @@ class BFCLMetrics:
             return 0.0
 
         correct = 0
-        for key, expected_value in expected_params.items():
-            if key in predicted_params:
+        for key, expected_value in expected_params.items(): # 遍历期望的参数
+            if key in predicted_params: # 如果预测的参数中包含期望的参数
                 predicted_value = predicted_params[key]
-                if BFCLMetrics._values_match(predicted_value, expected_value):
+                if BFCLMetrics._values_match(predicted_value, expected_value): # 如果预测的参数值与期望的参数值匹配
                     correct += 1
 
-        return correct / len(expected_params)
+        return correct / len(expected_params) # 返回参数准确率
 
     @staticmethod
     def _values_match(v1: Any, v2: Any) -> bool:
         """比较两个值是否匹配"""
         # 处理数值类型
         if isinstance(v1, (int, float)) and isinstance(v2, (int, float)):
-            return abs(v1 - v2) < 1e-6
+            return abs(v1 - v2) < 1e-6 # 如果两个数值的差值小于1e-6，返回True
 
         # 处理字符串类型
         if isinstance(v1, str) and isinstance(v2, str):
@@ -159,15 +159,15 @@ class BFCLMetrics:
 
         total = len(results)
 
-        # 基础指标
+        # 基础指标 - 准确率
         success_count = sum(1 for r in results if r.get("success", False))
-        accuracy = success_count / total
+        accuracy = success_count / total 
 
-        # 分数统计
+        # 分数统计 - 平均分
         scores = [r.get("score", 0.0) for r in results]
         avg_score = sum(scores) / len(scores) if scores else 0.0
 
-        # 执行时间统计
+        # 执行时间统计 - 平均执行时间
         execution_times = [r.get("execution_time", 0.0) for r in results if "execution_time" in r]
         avg_execution_time = sum(execution_times) / len(execution_times) if execution_times else 0.0
 
@@ -206,7 +206,7 @@ class BFCLMetrics:
         categories = {}
 
         for result in results:
-            category = result.get("category", "unknown")
+            category = result.get("category", "unknown") # 获取类别
             if category not in categories:
                 categories[category] = {
                     "total": 0,
@@ -215,9 +215,9 @@ class BFCLMetrics:
                 }
 
             categories[category]["total"] += 1
-            if result.get("success", False):
-                categories[category]["success"] += 1
-            categories[category]["scores"].append(result.get("score", 0.0))
+            if result.get("success", False): # 如果成功
+                categories[category]["success"] += 1 # 计算成功次数
+            categories[category]["scores"].append(result.get("score", 0.0)) # 计算分数
 
         # 计算每个类别的统计信息
         category_metrics = {}
@@ -240,6 +240,7 @@ class BFCLMetrics:
         successful_calls = 0
         function_names = set()
 
+        # 计算函数调用统计
         for result in results:
             predicted = result.get("predicted", [])
             if isinstance(predicted, list):
@@ -251,11 +252,11 @@ class BFCLMetrics:
                             successful_calls += 1
 
         return {
-            "total_function_calls": total_calls,
-            "successful_calls": successful_calls,
-            "unique_functions": len(function_names),
-            "function_names": sorted(list(function_names)),
-            "avg_calls_per_sample": total_calls / len(results) if results else 0.0
+            "total_function_calls": total_calls, # 总函数调用次数
+            "successful_calls": successful_calls, # 成功调用次数
+            "unique_functions": len(function_names), # 唯一函数调用次数
+            "function_names": sorted(list(function_names)), # 函数调用名称
+            "avg_calls_per_sample": total_calls / len(results) if results else 0.0 # 平均函数调用次数
         }
 
     def _compute_score_distribution(self, scores: List[float]) -> Dict[str, Any]:
@@ -269,8 +270,8 @@ class BFCLMetrics:
             "mean": sum(scores) / len(scores),
             "median": sorted(scores)[len(scores) // 2],
             "std": np.std(scores) if len(scores) > 1 else 0.0,
-            "quartiles": {
-                "q1": sorted(scores)[len(scores) // 4],
+            "quartiles": { 
+                "q1": sorted(scores)[len(scores) // 4], 
                 "q2": sorted(scores)[len(scores) // 2],
                 "q3": sorted(scores)[3 * len(scores) // 4]
             }
